@@ -300,6 +300,7 @@ The `sample_conversations.py` file contains synthetic mental health conversation
 | `main.py` | Demo script with sample conversation |
 | `sample_conversations.py` | Synthetic mental health conversations |
 | `api_server.py` | REST API for programmatic access |
+| `chat.py` | Natural language chat interface |
 | `quick_test.py` | Fast single-conversation test |
 | `load_conversations.py` | Bulk conversation loader |
 
@@ -330,6 +331,59 @@ curl -X POST http://localhost:8080/query \
   -H "Content-Type: application/json" \
   -d '{"query": "What treatments has this patient tried?"}'
 ```
+
+---
+
+## Natural Language Chat
+
+You can query the knowledge graph using natural language — no Cypher required!
+
+### Run the Chat Interface
+
+```bash
+python chat.py
+```
+
+### Example Session
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║        Mental Health Knowledge Graph - Chat Interface        ║
+╚══════════════════════════════════════════════════════════════╝
+
+📊 Connected! Graph has 85 entities, 122 relationships
+
+🔍 Ask a question: What medications have been prescribed?
+
+📋 Results:
+   1. Dr. Chen prescribed sertraline to the patient.
+   2. Dr. Chen prescribed bupropion to the patient.
+   3. Dr. James Wilson prescribed sertraline to the patient last month.
+
+🔍 Ask a question: Who supports the patient?
+
+📋 Results:
+   1. Michael supports the patient.
+   2. Emma provides support to the patient.
+```
+
+### Example Questions
+
+- *"What symptoms has the patient experienced?"*
+- *"Who provides support to the patient?"*
+- *"What medications have been prescribed?"*
+- *"Who is Dr. Chen?"*
+- *"What triggered the anxiety?"*
+- *"What is the care team?"*
+
+### How It Works
+
+The chat interface uses **Graphiti's semantic search**:
+1. Your question is converted to an embedding (numerical representation)
+2. The system finds facts in the knowledge graph with similar meaning
+3. Results are ranked by relevance and returned
+
+This means you can ask questions naturally without knowing Cypher syntax.
 
 ---
 
