@@ -13,48 +13,51 @@ And creates a queryable knowledge graph:
 [Sarah] --has_role--> [VP of Engineering]
 [John] --is_ceo_of--> [Acme Corp]
 [Acme Corp] --expanding_to--> [Europe]
-[Sarah] --attended--> [Seattle Conference]
 ```
 
----
-
-## Prerequisites
-
-Before starting, you'll need:
-
-- **Python 3.10+** - Check with `python3 --version`
-- **Docker** - For running Neo4j locally ([Install Docker](https://docs.docker.com/get-docker/))
-- **An LLM provider** (choose one):
-  - **Ollama** (free, runs locally) - [Install Ollama](https://ollama.ai)
-  - **Groq** (free tier, cloud) - [Get API key](https://console.groq.com)
-  - **OpenAI** (paid, cloud) - [Get API key](https://platform.openai.com/api-keys)
+You can then query the graph with natural language: *"Who works at Acme Corp?"* → Returns Sarah and John.
 
 ---
 
-## Quick Start
+## Setup Guide
 
-### Step 1: Clone and Setup Python Environment
+This guide uses **Ollama** (free, local AI) and **Docker** (for the Neo4j database). These run entirely on your machine — no API keys or cloud services needed.
+
+### Prerequisites
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| **Python 3.10+** | Runtime | Check: `python3 --version` |
+| **Docker** | Runs the Neo4j database | [Install Docker](https://docs.docker.com/get-docker/) |
+| **Ollama** | Runs AI models locally | [Install Ollama](https://ollama.ai) |
+
+---
+
+### Step 1: Clone the Repository
 
 ```bash
-# Clone the repository
 git clone https://github.com/povilaskarvelis/chat2graph.git
 cd chat2graph
+```
 
-# Create Python virtual environment
+### Step 2: Set Up Python Environment
+
+```bash
+# Create virtual environment
 python3 -m venv venv
 
 # Activate it
-source venv/bin/activate  # On Mac/Linux
-# OR
-venv\Scripts\activate     # On Windows
+source venv/bin/activate  # Mac/Linux
+# venv\Scripts\activate   # Windows
 
 # Install dependencies
-pip install graphiti-core python-dotenv fastapi uvicorn
+pip install -r requirements.txt
 ```
 
-### Step 2: Start Neo4j Database
+### Step 3: Start Neo4j (Graph Database)
 
-**Option A: Docker (Recommended)**
+Neo4j stores the knowledge graph. Run it with Docker:
+
 ```bash
 docker run -d \
   --name neo4j \
@@ -64,155 +67,155 @@ docker run -d \
   neo4j:latest
 ```
 
-**Option B: Neo4j Aura (Free Cloud)**
-1. Go to https://neo4j.com/cloud/aura-free/
-2. Create a free account and instance
-3. Save your connection URI, username, and password
-
-### Step 3: Setup Your LLM Provider
-
-Choose **one** of these options:
-
-#### Option A: Ollama (Free, Local, Private)
-
+Wait ~30 seconds for it to start. You can check it's running:
 ```bash
-# Install Ollama (Mac)
-brew install ollama
-
-# Start Ollama
-ollama serve
-
-# Download required models (in a new terminal)
-ollama pull llama3.2
-ollama pull nomic-embed-text
+docker ps  # Should show "neo4j" container
 ```
 
-#### Option B: Groq (Free Tier, Fast)
+### Step 4: Start Ollama (Local AI)
 
-1. Go to https://console.groq.com
-2. Create account and get API key
-3. You'll add this to `.env` in the next step
-
-#### Option C: OpenAI (Paid)
-
-1. Go to https://platform.openai.com/api-keys
-2. Create an API key
-3. You'll add this to `.env` in the next step
-
-### Step 4: Configure Environment
-
-Create a `.env` file in the project root:
+Ollama runs the AI models that extract entities from text.
 
 ```bash
-# For Ollama (local, free):
+# Start Ollama (runs in background)
+ollama serve
+```
+
+In a **new terminal**, download the required models:
+```bash
+ollama pull llama3.2           # Language model (~2GB)
+ollama pull nomic-embed-text   # Embedding model (~300MB)
+```
+
+### Step 5: Create Configuration File
+
+Create a file called `.env` in the project folder:
+
+```bash
+# .env file contents:
+
+# AI Model (Ollama - local, free)
 LLM_PROVIDER=ollama
 OLLAMA_MODEL=llama3.2
 OLLAMA_BASE_URL=http://localhost:11434/v1
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text
-OPENAI_API_KEY=dummy
 
-# For Groq (cloud, free tier):
-# LLM_PROVIDER=groq
-# GROQ_API_KEY=your-groq-api-key-here
-# GROQ_MODEL=llama-3.1-8b-instant
-# OPENAI_API_KEY=dummy
-
-# For OpenAI (cloud, paid):
-# LLM_PROVIDER=openai
-# OPENAI_API_KEY=your-openai-api-key-here
-# OPENAI_MODEL=gpt-4o-mini
-
-# Neo4j Database (Docker defaults)
+# Neo4j Database
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=password123
+
+# Required placeholder (don't change)
+OPENAI_API_KEY=dummy
 ```
 
-### Step 5: Run the Demo
+### Step 6: Run the Demo
 
 ```bash
 # Make sure venv is activated
 source venv/bin/activate
 
-# Run the demo script
+# Run it!
 python main.py
 ```
 
-You should see output like:
+You should see:
 ```
 🚀 Chat2Graph Starting...
 🧠 Setting up AI models...
+   🤖 Using Ollama (local, free)
 📡 Connecting to Neo4j...
+   ✅ Connected
 📝 Processing conversation...
+   (This takes 1-2 minutes with local AI)
 ✅ Conversation processed and added to graph!
 ```
 
-### Step 6: View Your Knowledge Graph
+### Step 7: View Your Knowledge Graph
 
 1. Open **http://localhost:7474** in your browser
-2. Login with `neo4j` / `password123`
+2. Connect with:
+   - Username: `neo4j`
+   - Password: `password123`
 3. Run this query to see your graph:
-
-```cypher
-MATCH (n)-[r]->(m) RETURN n, r, m
-```
-
-4. Click and drag nodes to explore the relationships!
+   ```
+   MATCH (n)-[r]->(m) RETURN n, r, m
+   ```
+4. You'll see an interactive visualization — drag nodes around to explore!
 
 ---
 
-## Using the API Server
+## Understanding the Graph
 
-For automated processing, start the API server:
+When you run the query `MATCH (n)-[r]->(m) RETURN n, r, m`:
+
+| Part | Meaning |
+|------|---------|
+| `MATCH` | "Find..." |
+| `(n)` | Any node (entity) |
+| `-[r]->` | Connected by a relationship |
+| `(m)` | To another node |
+| `RETURN` | Show me the results |
+
+**In plain English:** *"Find everything connected to something else."*
+
+### More Useful Queries
+
+```cypher
+-- See all entities
+MATCH (n:Entity) RETURN n
+
+-- Find a specific person
+MATCH (n) WHERE n.name CONTAINS 'Sarah' RETURN n
+
+-- See all relationships
+MATCH (n)-[r]->(m) RETURN n.name, type(r), m.name
+
+-- Reset the graph (delete everything)
+MATCH (n) DETACH DELETE n
+```
+
+---
+
+## Project Files
+
+| File | What It Does |
+|------|--------------|
+| `main.py` | Demo script — processes a sample conversation |
+| `quick_test.py` | Faster test with a shorter conversation |
+| `api_server.py` | REST API for adding conversations programmatically |
+| `sample_conversations.py` | Example conversation data |
+| `.env` | Your configuration (not committed to git) |
+
+---
+
+## Using the API
+
+For programmatic access, start the API server:
 
 ```bash
 python api_server.py
 ```
 
-This provides REST endpoints at **http://localhost:8080**:
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/add_conversation` | POST | Add a conversation to the graph |
-| `/query` | POST | Query the knowledge graph |
-| `/stats` | GET | Get graph statistics |
-
-### Example: Add a Conversation
+Then add conversations via HTTP:
 
 ```bash
+# Add a conversation
 curl -X POST http://localhost:8080/add_conversation \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "meeting_notes",
-    "content": "John mentioned that Lisa just joined Google as a PM.",
-    "source_description": "Team meeting"
+    "name": "meeting_001",
+    "content": "Tom said he just joined Microsoft as a designer.",
+    "source_description": "Team standup"
   }'
-```
 
-### Example: Query the Graph
-
-```bash
+# Query the graph
 curl -X POST http://localhost:8080/query \
   -H "Content-Type: application/json" \
-  -d '{"query": "Who works at Google?"}'
-```
+  -d '{"query": "Who works at Microsoft?"}'
 
----
-
-## Project Structure
-
-```
-chat2graph/
-├── main.py                 # Demo script - processes a sample conversation
-├── api_server.py           # REST API for automated processing
-├── quick_test.py           # Fast single-conversation test
-├── load_conversations.py   # Bulk conversation loader
-├── sample_conversations.py # Sample conversation data
-├── n8n_workflow.json       # Import this into n8n for automation
-├── .env                    # Your configuration (don't commit!)
-├── .env.example            # Template for .env
-├── venv/                   # Python virtual environment
-└── README.md               # This file
+# Get statistics
+curl http://localhost:8080/stats
 ```
 
 ---
@@ -221,101 +224,109 @@ chat2graph/
 
 ```
 ┌─────────────────────┐
-│   Conversation      │  "Alice met Sarah from Acme Corp..."
+│   Conversation      │  "Alice met Bob at Google..."
 │      Text           │
 └──────────┬──────────┘
            │
            ▼
 ┌─────────────────────┐
-│   LLM (AI Model)    │  Extracts entities & relationships
-│  Ollama/Groq/OpenAI │
+│      Ollama         │  AI extracts: Alice, Bob, Google
+│   (Local LLM)       │  and their relationships
 └──────────┬──────────┘
            │
            ▼
 ┌─────────────────────┐
-│     Graphiti        │  Structures data, manages graph
-│   (Python Library)  │
+│     Graphiti        │  Python library that structures
+│                     │  the data and manages the graph
 └──────────┬──────────┘
            │
            ▼
 ┌─────────────────────┐
-│      Neo4j          │  Stores nodes, edges, properties
-│  (Graph Database)   │  Enables visual exploration
+│      Neo4j          │  Stores everything as nodes
+│  (Graph Database)   │  and edges for querying
 └─────────────────────┘
-```
-
-**Key Components:**
-- **Graphiti** - Python library that orchestrates LLM calls and graph operations
-- **Neo4j** - Graph database for storing and querying the knowledge graph
-- **LLM** - AI model that understands text and extracts structured information
-
----
-
-## Useful Neo4j Queries
-
-```cypher
--- See everything
-MATCH (n)-[r]->(m) RETURN n, r, m
-
--- Count all entities
-MATCH (n:Entity) RETURN count(n)
-
--- Find all people
-MATCH (n:Entity) WHERE n.entity_type = 'person' RETURN n
-
--- Find all companies
-MATCH (n:Entity) WHERE n.entity_type = 'organization' RETURN n
-
--- Find who works where
-MATCH (p)-[r:RELATES_TO]->(c) 
-WHERE r.fact CONTAINS 'works' 
-RETURN p, r, c
-
--- Search for a specific person
-MATCH (n) WHERE n.name CONTAINS 'Sarah' RETURN n
-
--- Find connections between two entities
-MATCH path = (a)-[*1..3]-(b) 
-WHERE a.name CONTAINS 'Sarah' AND b.name CONTAINS 'Acme'
-RETURN path
-
--- Delete everything (reset the graph)
-MATCH (n) DETACH DELETE n
 ```
 
 ---
 
 ## Troubleshooting
 
-### "Connection refused" to Neo4j
-- Make sure Docker is running: `docker ps`
-- Check if Neo4j container exists: `docker ps -a`
-- Restart it: `docker start neo4j`
+### Neo4j won't connect
+```bash
+# Check if container is running
+docker ps
 
-### "Model not found" with Ollama
-- Pull the model: `ollama pull llama3.2`
-- Make sure Ollama is running: `ollama serve`
+# If not running, start it
+docker start neo4j
 
-### Slow processing with Ollama
-- This is normal! Local models are slower than cloud APIs
-- Use `quick_test.py` for faster testing
-- Consider using Groq (free, fast cloud API)
+# If it doesn't exist, create it (Step 3)
+```
 
-### API key errors
-- Double-check your `.env` file
-- Make sure there are no spaces around the `=` sign
-- For Ollama, you still need `OPENAI_API_KEY=dummy` in `.env`
+### Ollama model not found
+```bash
+# Make sure Ollama is running
+ollama serve
+
+# Pull the models again
+ollama pull llama3.2
+ollama pull nomic-embed-text
+```
+
+### Processing is slow
+This is normal with local AI! Ollama on a laptop takes 1-2 minutes per conversation. For faster processing, see [Alternative: Use Groq](#alternative-use-groq-free-fast-cloud-ai) below.
+
+### "OPENAI_API_KEY" error
+Make sure your `.env` file has `OPENAI_API_KEY=dummy` — this is required even when using Ollama.
 
 ---
 
-## n8n Integration (Optional)
+## Alternative Options
 
-To automate conversation ingestion:
+### Alternative: Use Groq (Free, Fast Cloud AI)
 
-1. Install n8n: `npx n8n`
-2. Open http://localhost:5678
-3. Import `n8n_workflow.json`
-4. Configure webhooks to receive conversations from Slack, Discord, etc.
+Groq offers a free tier that's much faster than local Ollama:
+
+1. Get a free API key at https://console.groq.com
+2. Update your `.env`:
+   ```bash
+   LLM_PROVIDER=groq
+   GROQ_API_KEY=gsk_your_key_here
+   GROQ_MODEL=llama-3.1-8b-instant
+   OPENAI_API_KEY=dummy
+   
+   NEO4J_URI=bolt://localhost:7687
+   NEO4J_USER=neo4j
+   NEO4J_PASSWORD=password123
+   ```
+
+### Alternative: Use OpenAI (Paid, Highest Quality)
+
+For best accuracy, use OpenAI's models:
+
+1. Get an API key at https://platform.openai.com/api-keys
+2. Update your `.env`:
+   ```bash
+   LLM_PROVIDER=openai
+   OPENAI_API_KEY=sk-your_key_here
+   OPENAI_MODEL=gpt-4o-mini
+   
+   NEO4J_URI=bolt://localhost:7687
+   NEO4J_USER=neo4j
+   NEO4J_PASSWORD=password123
+   ```
+
+### Alternative: Use Neo4j Aura (Free Cloud Database)
+
+Instead of Docker, use Neo4j's free cloud offering:
+
+1. Create account at https://neo4j.com/cloud/aura-free/
+2. Create a free instance
+3. Update your `.env` with the connection details:
+   ```bash
+   NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
+   NEO4J_USER=neo4j
+   NEO4J_PASSWORD=your_aura_password
+   ```
 
 ---
 
@@ -324,8 +335,6 @@ To automate conversation ingestion:
 - [Graphiti Documentation](https://github.com/getzep/graphiti)
 - [Neo4j Cypher Query Language](https://neo4j.com/docs/cypher-manual/)
 - [Ollama Models](https://ollama.ai/library)
-- [Groq Console](https://console.groq.com)
-- [n8n Workflow Automation](https://n8n.io/)
 
 ---
 
