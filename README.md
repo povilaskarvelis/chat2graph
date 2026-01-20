@@ -1,35 +1,168 @@
 # Chat2Graph 🧠➡️🕸️
 
-Convert conversations into a knowledge graph using AI. Extract people, companies, relationships, and facts from text and visualize them as an interactive graph.
+A foundation for building mental health applications using knowledge graphs. Extract clinical entities, relationships, and patterns from conversations to enable diagnostics, monitoring, and care coordination tools.
 
-## What This Does
+## Purpose
 
-Takes raw conversation text like:
-> "I met Sarah from Acme Corp at the Seattle conference. She's their VP of Engineering and mentioned their CEO John is leading their expansion to Europe."
+This project provides the infrastructure for converting unstructured mental health conversations (clinical notes, therapy sessions, care coordination) into structured knowledge graphs that can power:
+
+- **Diagnostic support tools** — Track symptoms, their patterns, and relationships over time
+- **Care coordination systems** — Map patient support networks and provider relationships  
+- **Treatment monitoring** — Link treatments to outcomes and identify what works
+- **Research applications** — Aggregate patterns across anonymized clinical data
+
+## What It Does
+
+Takes clinical conversation text like:
+> "Patient reports increased anxiety since job loss in March. Currently on sertraline prescribed by Dr. Wilson. Sister Emma and partner Michael provide primary support."
 
 And creates a queryable knowledge graph:
 ```
-[Sarah] --works_at--> [Acme Corp]
-[Sarah] --has_role--> [VP of Engineering]
-[John] --is_ceo_of--> [Acme Corp]
-[Acme Corp] --expanding_to--> [Europe]
+[Patient] --has_symptom--> [Anxiety]
+[Anxiety] --triggered_by--> [Job Loss]
+[Job Loss] --occurred--> [March]
+[Patient] --takes_medication--> [Sertraline]
+[Dr. Wilson] --prescribed--> [Sertraline]
+[Emma] --supports--> [Patient]
+[Michael] --supports--> [Patient]
 ```
 
-You can then query the graph with natural language: *"Who works at Acme Corp?"* → Returns Sarah and John.
+You can then query: *"What support systems does this patient have?"* or *"What triggered the anxiety symptoms?"*
+
+---
+
+## Extracted Entity Types
+
+| Category | Examples |
+|----------|----------|
+| **People** | Patients, clinicians, therapists, family members, support network |
+| **Symptoms** | Anxiety, depression, sleep disturbance, social withdrawal |
+| **Treatments** | Medications (sertraline, bupropion), therapy approaches (CBT) |
+| **Organizations** | Healthcare facilities, support services, employers |
+| **Temporal** | Symptom onset, treatment duration, episode history |
+| **Relationships** | Who treats whom, who supports whom, what treats what |
+
+---
+
+## Key Technologies
+
+This project combines several tools. Here's what each does:
+
+### Graphiti
+**What:** A Python library that orchestrates the conversion of text into knowledge graphs.
+
+**Role:** Graphiti takes your conversation text, sends it to an LLM (like Ollama) to extract entities and relationships, then stores the structured data in Neo4j. It handles the complexity of:
+- Prompting the LLM to identify entities (people, symptoms, treatments)
+- Extracting relationships between entities
+- Managing temporal information (when things happened)
+- Deduplicating entities across multiple conversations
+
+**Install:** `pip install graphiti-core` (included in requirements.txt)
+
+**Not Docker:** Graphiti is a Python library that runs in your Python environment.
+
+---
+
+### Neo4j
+**What:** A graph database optimized for storing and querying connected data.
+
+**Role:** Neo4j stores the knowledge graph — all the entities (nodes) and relationships (edges) extracted from conversations. Unlike traditional databases that store data in tables, Neo4j stores data as a network of connections, making it ideal for questions like "Who is connected to whom?" or "What path connects symptom X to treatment Y?"
+
+**Key features:**
+- Visual graph exploration in the browser
+- Powerful query language (Cypher)
+- Handles complex relationship traversals efficiently
+
+**Install:** We run Neo4j in Docker for convenience, but you could also:
+- Install it natively: https://neo4j.com/download/
+- Use Neo4j Aura (free cloud): https://neo4j.com/cloud/aura-free/
+
+**Docker is optional:** Docker just makes it easier to run Neo4j without installing it system-wide.
+
+---
+
+### Cypher
+**What:** Neo4j's query language for graph databases.
+
+**Role:** Cypher lets you ask questions about your knowledge graph. It's designed to look like the patterns you're searching for:
+
+```cypher
+-- "Find everyone who supports the patient"
+MATCH (supporter)-[:SUPPORTS]->(patient)
+RETURN supporter.name
+
+-- "What symptoms are linked to what triggers?"
+MATCH (trigger)-[:TRIGGERED]->(symptom)
+RETURN trigger.name, symptom.name
+```
+
+The syntax mirrors graph patterns:
+- `(node)` — a circle/entity
+- `-[relationship]->` — an arrow/connection
+- `MATCH` — find this pattern
+- `RETURN` — show me these parts
+
+**Not installed separately:** Cypher comes built into Neo4j.
+
+---
+
+### Ollama
+**What:** A tool for running large language models (LLMs) locally on your computer.
+
+**Role:** Ollama runs the AI models that understand your text and extract entities. When Graphiti needs to identify "Dr. Wilson prescribed sertraline," it sends the text to Ollama, which uses models like Llama 3.2 to understand and extract that information.
+
+**Why local?** 
+- Free (no API costs)
+- Private (data stays on your machine)
+- Works offline
+
+**Install:** Native app from https://ollama.ai (or `brew install ollama` on Mac)
+
+**Not Docker:** Ollama runs as a native application for better GPU access.
+
+---
+
+### How They Work Together
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Your Application                        │
+│                     (Python scripts)                         │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                       Graphiti                               │
+│              (Python library - pip install)                  │
+│                                                              │
+│  • Receives conversation text                                │
+│  • Sends to LLM for entity extraction                        │
+│  • Structures the extracted data                             │
+│  • Stores in Neo4j                                           │
+└──────────┬─────────────────────────────────┬────────────────┘
+           │                                 │
+           ▼                                 ▼
+┌─────────────────────┐         ┌─────────────────────────────┐
+│       Ollama        │         │          Neo4j              │
+│   (native app)      │         │    (Docker container)       │
+│                     │         │                             │
+│ • Runs LLM locally  │         │ • Stores nodes & edges      │
+│ • Extracts entities │         │ • Answers Cypher queries    │
+│ • Creates embeddings│         │ • Visual graph browser      │
+└─────────────────────┘         └─────────────────────────────┘
+```
 
 ---
 
 ## Setup Guide
 
-This guide uses **Ollama** (free, local AI) and **Docker** (for the Neo4j database). These run entirely on your machine — no API keys or cloud services needed.
-
 ### Prerequisites
 
-| Tool | Purpose | Install |
-|------|---------|---------|
-| **Python 3.10+** | Runtime | Check: `python3 --version` |
-| **Docker** | Runs the Neo4j database | [Install Docker](https://docs.docker.com/get-docker/) |
-| **Ollama** | Runs AI models locally | [Install Ollama](https://ollama.ai) |
+| Tool | What It Is | Install |
+|------|------------|---------|
+| **Python 3.10+** | Programming language runtime | Check: `python3 --version` |
+| **Docker** | Containerization (runs Neo4j) | [Install Docker](https://docs.docker.com/get-docker/) |
+| **Ollama** | Local AI model runner | [Install Ollama](https://ollama.ai) |
 
 ---
 
@@ -42,6 +175,8 @@ cd chat2graph
 
 ### Step 2: Set Up Python Environment
 
+This installs Graphiti and other Python dependencies:
+
 ```bash
 # Create virtual environment
 python3 -m venv venv
@@ -50,13 +185,13 @@ python3 -m venv venv
 source venv/bin/activate  # Mac/Linux
 # venv\Scripts\activate   # Windows
 
-# Install dependencies
+# Install Graphiti and dependencies
 pip install -r requirements.txt
 ```
 
 ### Step 3: Start Neo4j (Graph Database)
 
-Neo4j stores the knowledge graph. Run it with Docker:
+Neo4j stores the knowledge graph. The easiest way to run it is with Docker:
 
 ```bash
 docker run -d \
@@ -67,14 +202,14 @@ docker run -d \
   neo4j:latest
 ```
 
-Wait ~30 seconds for it to start. You can check it's running:
-```bash
-docker ps  # Should show "neo4j" container
-```
+- Port `7474` — Web browser interface
+- Port `7687` — Database connection (Bolt protocol)
+
+Wait ~30 seconds, then verify: `docker ps`
 
 ### Step 4: Start Ollama (Local AI)
 
-Ollama runs the AI models that extract entities from text.
+Ollama runs the AI models that extract entities from text:
 
 ```bash
 # Start Ollama (runs in background)
@@ -83,17 +218,15 @@ ollama serve
 
 In a **new terminal**, download the required models:
 ```bash
-ollama pull llama3.2           # Language model (~2GB)
-ollama pull nomic-embed-text   # Embedding model (~300MB)
+ollama pull llama3.2           # Language model for understanding text (~2GB)
+ollama pull nomic-embed-text   # Embedding model for similarity search (~300MB)
 ```
 
-### Step 5: Create Configuration File
+### Step 5: Create Configuration
 
-Create a file called `.env` in the project folder:
+Create a `.env` file in the project root:
 
 ```bash
-# .env file contents:
-
 # AI Model (Ollama - local, free)
 LLM_PROVIDER=ollama
 OLLAMA_MODEL=llama3.2
@@ -105,147 +238,122 @@ NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=password123
 
-# Required placeholder (don't change)
+# Required placeholder
 OPENAI_API_KEY=dummy
 ```
 
 ### Step 6: Run the Demo
 
 ```bash
-# Make sure venv is activated
 source venv/bin/activate
-
-# Run it!
 python main.py
 ```
 
-You should see:
-```
-🚀 Chat2Graph Starting...
-🧠 Setting up AI models...
-   🤖 Using Ollama (local, free)
-📡 Connecting to Neo4j...
-   ✅ Connected
-📝 Processing conversation...
-   (This takes 1-2 minutes with local AI)
-✅ Conversation processed and added to graph!
-```
-
-### Step 7: View Your Knowledge Graph
+### Step 7: View the Knowledge Graph
 
 1. Open **http://localhost:7474** in your browser
-2. Connect with:
-   - Username: `neo4j`
-   - Password: `password123`
-3. Run this query to see your graph:
-   ```
+2. Login: `neo4j` / `password123`
+3. Run this Cypher query to see your graph:
+   ```cypher
    MATCH (n)-[r]->(m) RETURN n, r, m
    ```
-4. You'll see an interactive visualization — drag nodes around to explore!
 
 ---
 
-## Understanding the Graph
+## Sample Data
 
-When you run the query `MATCH (n)-[r]->(m) RETURN n, r, m`:
+The `sample_conversations.py` file contains synthetic mental health conversations:
 
-| Part | Meaning |
-|------|---------|
-| `MATCH` | "Find..." |
-| `(n)` | Any node (entity) |
-| `-[r]->` | Connected by a relationship |
-| `(m)` | To another node |
-| `RETURN` | Show me the results |
+| Conversation | Type |
+|--------------|------|
+| `intake_assessment_001` | Clinical intake with symptom history |
+| `care_coordination_002` | Multidisciplinary team meeting |
+| `therapy_session_015` | CBT session notes |
+| `support_group_session` | Facilitated group discussion |
+| `treatment_planning_review` | Quarterly progress review |
 
-**In plain English:** *"Find everything connected to something else."*
-
-### More Useful Queries
-
-```cypher
--- See all entities
-MATCH (n:Entity) RETURN n
-
--- Find a specific person
-MATCH (n) WHERE n.name CONTAINS 'Sarah' RETURN n
-
--- See all relationships
-MATCH (n)-[r]->(m) RETURN n.name, type(r), m.name
-
--- Reset the graph (delete everything)
-MATCH (n) DETACH DELETE n
-```
+**Note:** All sample data is entirely fictional and created for testing purposes.
 
 ---
 
 ## Project Files
 
-| File | What It Does |
-|------|--------------|
-| `main.py` | Demo script — processes a sample conversation |
-| `quick_test.py` | Faster test with a shorter conversation |
-| `api_server.py` | REST API for adding conversations programmatically |
-| `sample_conversations.py` | Example conversation data |
-| `.env` | Your configuration (not committed to git) |
+| File | Purpose |
+|------|---------|
+| `main.py` | Demo script with sample conversation |
+| `sample_conversations.py` | Synthetic mental health conversations |
+| `api_server.py` | REST API for programmatic access |
+| `quick_test.py` | Fast single-conversation test |
+| `load_conversations.py` | Bulk conversation loader |
 
 ---
 
 ## Using the API
 
-For programmatic access, start the API server:
+For integration with other systems:
 
 ```bash
 python api_server.py
 ```
 
-Then add conversations via HTTP:
+Endpoints at **http://localhost:8080**:
 
 ```bash
-# Add a conversation
+# Add clinical notes
 curl -X POST http://localhost:8080/add_conversation \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "meeting_001",
-    "content": "Tom said he just joined Microsoft as a designer.",
-    "source_description": "Team standup"
+    "name": "session_042",
+    "content": "Patient reports improved sleep after starting melatonin...",
+    "source_description": "Therapy session notes"
   }'
 
 # Query the graph
 curl -X POST http://localhost:8080/query \
   -H "Content-Type: application/json" \
-  -d '{"query": "Who works at Microsoft?"}'
-
-# Get statistics
-curl http://localhost:8080/stats
+  -d '{"query": "What treatments has this patient tried?"}'
 ```
 
 ---
 
-## How It Works
+## Example Cypher Queries
 
+```cypher
+-- Find all symptoms mentioned
+MATCH (n:Entity) WHERE n.entity_type = 'symptom' RETURN n
+
+-- Find patient support networks
+MATCH (supporter)-[r]->(patient)
+WHERE r.fact CONTAINS 'support'
+RETURN supporter, r, patient
+
+-- Find medication relationships
+MATCH (provider)-[r]->(medication)
+WHERE r.fact CONTAINS 'prescribed'
+RETURN provider.name, medication.name
+
+-- Track symptom triggers
+MATCH (trigger)-[r]->(symptom)
+WHERE r.fact CONTAINS 'trigger'
+RETURN trigger, symptom
+
+-- See all entities and relationships
+MATCH (n)-[r]->(m) RETURN n, r, m
 ```
-┌─────────────────────┐
-│   Conversation      │  "Alice met Bob at Google..."
-│      Text           │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│      Ollama         │  AI extracts: Alice, Bob, Google
-│   (Local LLM)       │  and their relationships
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│     Graphiti        │  Python library that structures
-│                     │  the data and manages the graph
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│      Neo4j          │  Stores everything as nodes
-│  (Graph Database)   │  and edges for querying
-└─────────────────────┘
-```
+
+---
+
+## Future Development
+
+This infrastructure can support:
+
+- [ ] Symptom trajectory visualization
+- [ ] Treatment outcome analysis
+- [ ] Care team network mapping
+- [ ] Risk factor identification
+- [ ] Natural language clinical queries
+- [ ] Integration with EHR systems
+- [ ] Anonymized research data aggregation
 
 ---
 
@@ -253,80 +361,40 @@ curl http://localhost:8080/stats
 
 ### Neo4j won't connect
 ```bash
-# Check if container is running
-docker ps
-
-# If not running, start it
-docker start neo4j
-
-# If it doesn't exist, create it (Step 3)
+docker ps          # Check if running
+docker start neo4j # Start if stopped
 ```
 
 ### Ollama model not found
 ```bash
-# Make sure Ollama is running
-ollama serve
-
-# Pull the models again
-ollama pull llama3.2
+ollama serve                    # Make sure it's running
+ollama pull llama3.2           # Pull models
 ollama pull nomic-embed-text
 ```
 
 ### Processing is slow
-This is normal with local AI! Ollama on a laptop takes 1-2 minutes per conversation. For faster processing, see [Alternative: Use Groq](#alternative-use-groq-free-fast-cloud-ai) below.
-
-### "OPENAI_API_KEY" error
-Make sure your `.env` file has `OPENAI_API_KEY=dummy` — this is required even when using Ollama.
+Local AI takes 1-2 minutes per conversation. For faster processing, see alternatives below.
 
 ---
 
-## Alternative Options
+## Alternative Configurations
 
-### Alternative: Use Groq (Free, Fast Cloud AI)
+### Groq (Free, Fast Cloud AI)
+```bash
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_key_here
+GROQ_MODEL=llama-3.1-8b-instant
+```
 
-Groq offers a free tier that's much faster than local Ollama:
+### OpenAI (Paid, Highest Quality)
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=gpt-4o-mini
+```
 
-1. Get a free API key at https://console.groq.com
-2. Update your `.env`:
-   ```bash
-   LLM_PROVIDER=groq
-   GROQ_API_KEY=gsk_your_key_here
-   GROQ_MODEL=llama-3.1-8b-instant
-   OPENAI_API_KEY=dummy
-   
-   NEO4J_URI=bolt://localhost:7687
-   NEO4J_USER=neo4j
-   NEO4J_PASSWORD=password123
-   ```
-
-### Alternative: Use OpenAI (Paid, Highest Quality)
-
-For best accuracy, use OpenAI's models:
-
-1. Get an API key at https://platform.openai.com/api-keys
-2. Update your `.env`:
-   ```bash
-   LLM_PROVIDER=openai
-   OPENAI_API_KEY=sk-your_key_here
-   OPENAI_MODEL=gpt-4o-mini
-   
-   NEO4J_URI=bolt://localhost:7687
-   NEO4J_USER=neo4j
-   NEO4J_PASSWORD=password123
-   ```
-
-### Alternative: Use Neo4j Aura (Free Cloud Database)
-
-Instead of Docker, use Neo4j's free cloud offering:
-
-1. Create account at https://neo4j.com/cloud/aura-free/
-2. Create a free instance
-3. Update your `.env` with the connection details:
-   ```bash
-   NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
-   NEO4J_USER=neo4j
-   NEO4J_PASSWORD=your_aura_password
-   ```
+### Neo4j Aura (Free Cloud Database)
+Use connection details from https://neo4j.com/cloud/aura-free/
 
 ---
 
@@ -337,6 +405,10 @@ Instead of Docker, use Neo4j's free cloud offering:
 - [Ollama Models](https://ollama.ai/library)
 
 ---
+
+## Disclaimer
+
+This is a research and development tool. Sample conversations are entirely synthetic. Any clinical application would require appropriate validation, privacy safeguards, and regulatory compliance.
 
 ## License
 

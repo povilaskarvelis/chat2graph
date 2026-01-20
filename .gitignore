@@ -1,9 +1,13 @@
 # Environment and secrets
 .env
+.env.*
+!.env.example
 *.env.local
 
 # Python
 venv/
+env/
+.venv/
 __pycache__/
 *.pyc
 *.pyo
@@ -12,19 +16,33 @@ __pycache__/
 *.so
 .eggs/
 *.egg-info/
+*.egg
 dist/
 build/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 .DS_Store
+Thumbs.db
 
 # Logs
 *.log
 api.log
+nohup.out
 
 # Neo4j data (if running locally without Docker)
 data/
+plugins/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Node (for n8n)
+node_modules/
