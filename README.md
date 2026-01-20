@@ -37,7 +37,7 @@ Before starting, you'll need:
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/chat2graph.git
+git clone https://github.com/povilaskarvelis/chat2graph.git
 cd chat2graph
 
 # Create Python virtual environment
