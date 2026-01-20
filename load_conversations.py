@@ -112,12 +112,12 @@ async def main():
     print("=" * 60)
     
     queries = [
-        "Who works at DataFlow Inc?",
-        "Which investors are mentioned?",
-        "Who knows people at Google?",
-        "What companies are mentioned?",
-        "Who is connected to Andreessen Horowitz?",
-        "What research collaborations exist?",
+        "What symptoms has the patient experienced?",
+        "Who provides support to the patient?",
+        "What medications have been prescribed?",
+        "Who is Dr. Chen?",
+        "What treatments are being used?",
+        "What are the care team members?",
     ]
     
     for query in queries:
@@ -141,26 +141,25 @@ async def main():
     print("🎉 COMPLETE!")
     print("=" * 60)
     print(f"""
-Your knowledge graph now contains information about:
+Your knowledge graph now contains mental health data:
 
 📊 ENTITIES EXTRACTED:
-   • People: Emma, Marcus, Sophie, Dr. Rebecca Torres, James Park, 
-            Nina Chen, Michael Zhang, Lisa Wang, Tom, Alex Rivera, 
-            and many more...
-   • Companies: DataFlow Inc, Nexus Systems, Sequoia Capital, 
-               Google, DeepMind, Stanford, MIT, Salesforce, etc.
-   • Investors: Andreessen Horowitz, Accel, Index Ventures, etc.
+   • Clinicians: Dr. Chen, Dr. Martinez, Dr. Wilson, Dr. Patel, etc.
+   • Support Network: Michael, Emma, family members
+   • Symptoms: Anxiety, depression, sleep disturbance
+   • Medications: Sertraline, bupropion, escitalopram, venlafaxine
+   • Organizations: Workforce Solutions, support groups
 
 🔗 RELATIONSHIPS FOUND:
-   • Employment: Who works where
-   • Investments: Who invested in what
-   • Collaborations: Research partnerships
-   • Introductions: Who knows who
+   • Treatment: Who prescribed what, what treats what
+   • Support: Who supports whom
+   • Symptoms: What triggered what, temporal patterns
+   • Care Team: Provider relationships
 
 📊 View your graph:
    1. Open http://localhost:7474
    2. Login: neo4j / password123
-   3. Run: MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 100
+   3. Run: MATCH (n)-[r]->(m) RETURN n, r, m
 """)
 
 
