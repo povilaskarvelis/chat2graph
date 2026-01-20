@@ -20,107 +20,33 @@ And creates a queryable knowledge graph:
 ```
 [Patient] --has_symptom--> [Anxiety]
 [Anxiety] --triggered_by--> [Job Loss]
-[Job Loss] --occurred--> [March]
 [Patient] --takes_medication--> [Sertraline]
 [Dr. Wilson] --prescribed--> [Sertraline]
 [Emma] --supports--> [Patient]
-[Michael] --supports--> [Patient]
 ```
 
 You can then query: *"What support systems does this patient have?"* or *"What triggered the anxiety symptoms?"*
 
 ---
 
-## Extracted Entity Types
+## Overview
 
-| Category | Examples |
-|----------|----------|
-| **People** | Patients, clinicians, therapists, family members, support network |
-| **Symptoms** | Anxiety, depression, sleep disturbance, social withdrawal |
-| **Treatments** | Medications (sertraline, bupropion), therapy approaches (CBT) |
-| **Organizations** | Healthcare facilities, support services, employers |
-| **Temporal** | Symptom onset, treatment duration, episode history |
-| **Relationships** | Who treats whom, who supports whom, what treats what |
+### Key Components
 
----
+| Component | What It Does | How It Runs |
+|-----------|--------------|-------------|
+| **Graphiti** | Orchestrates text → graph conversion | Python library (`pip install`) |
+| **Ollama** | Local AI that extracts entities from text | Native app |
+| **Neo4j** | Graph database that stores and queries the data | Docker container |
+| **Cypher** | Query language for asking questions | Built into Neo4j |
 
-## Key Technologies
+### Prerequisites
 
-This project combines several tools. Here's what each does:
-
-### Graphiti
-**What:** A Python library that orchestrates the conversion of text into knowledge graphs.
-
-**Role:** Graphiti takes your conversation text, sends it to an LLM (like Ollama) to extract entities and relationships, then stores the structured data in Neo4j. It handles the complexity of:
-- Prompting the LLM to identify entities (people, symptoms, treatments)
-- Extracting relationships between entities
-- Managing temporal information (when things happened)
-- Deduplicating entities across multiple conversations
-
-**Install:** `pip install graphiti-core` (included in requirements.txt)
-
-**Not Docker:** Graphiti is a Python library that runs in your Python environment.
-
----
-
-### Neo4j
-**What:** A graph database optimized for storing and querying connected data.
-
-**Role:** Neo4j stores the knowledge graph — all the entities (nodes) and relationships (edges) extracted from conversations. Unlike traditional databases that store data in tables, Neo4j stores data as a network of connections, making it ideal for questions like "Who is connected to whom?" or "What path connects symptom X to treatment Y?"
-
-**Key features:**
-- Visual graph exploration in the browser
-- Powerful query language (Cypher)
-- Handles complex relationship traversals efficiently
-
-**Install:** We run Neo4j in Docker for convenience, but you could also:
-- Install it natively: https://neo4j.com/download/
-- Use Neo4j Aura (free cloud): https://neo4j.com/cloud/aura-free/
-
-**Docker is optional:** Docker just makes it easier to run Neo4j without installing it system-wide.
-
----
-
-### Cypher
-**What:** Neo4j's query language for graph databases.
-
-**Role:** Cypher lets you ask questions about your knowledge graph. It's designed to look like the patterns you're searching for:
-
-```cypher
--- "Find everyone who supports the patient"
-MATCH (supporter)-[:SUPPORTS]->(patient)
-RETURN supporter.name
-
--- "What symptoms are linked to what triggers?"
-MATCH (trigger)-[:TRIGGERED]->(symptom)
-RETURN trigger.name, symptom.name
-```
-
-The syntax mirrors graph patterns:
-- `(node)` — a circle/entity
-- `-[relationship]->` — an arrow/connection
-- `MATCH` — find this pattern
-- `RETURN` — show me these parts
-
-**Not installed separately:** Cypher comes built into Neo4j.
-
----
-
-### Ollama
-**What:** A tool for running large language models (LLMs) locally on your computer.
-
-**Role:** Ollama runs the AI models that understand your text and extract entities. When Graphiti needs to identify "Dr. Wilson prescribed sertraline," it sends the text to Ollama, which uses models like Llama 3.2 to understand and extract that information.
-
-**Why local?** 
-- Free (no API costs)
-- Private (data stays on your machine)
-- Works offline
-
-**Install:** Native app from https://ollama.ai (or `brew install ollama` on Mac)
-
-**Not Docker:** Ollama runs as a native application for better GPU access.
-
----
+| Tool | Purpose | Install |
+|------|---------|---------|
+| **Python 3.10+** | Runtime | Check: `python3 --version` |
+| **Docker** | Runs the Neo4j database | [Install Docker](https://docs.docker.com/get-docker/) |
+| **Ollama** | Runs AI models locally | [Install Ollama](https://ollama.ai) |
 
 ### How They Work Together
 
@@ -171,27 +97,9 @@ STEP 4: You query with Cypher
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Summary:**
-| Component | Role | Runs As |
-|-----------|------|---------|
-| **Graphiti** | Orchestrates everything | Python library (`pip install`) |
-| **Ollama** | Understands text, extracts entities | Native app |
-| **Neo4j** | Stores graph, answers queries | Docker container |
-| **Cypher** | Query language for Neo4j | Built into Neo4j |
-
 ---
 
 ## Setup Guide
-
-### Prerequisites
-
-| Tool | What It Is | Install |
-|------|------------|---------|
-| **Python 3.10+** | Programming language runtime | Check: `python3 --version` |
-| **Docker** | Containerization (runs Neo4j) | [Install Docker](https://docs.docker.com/get-docker/) |
-| **Ollama** | Local AI model runner | [Install Ollama](https://ollama.ai) |
-
----
 
 ### Step 1: Clone the Repository
 
@@ -284,6 +192,88 @@ python main.py
    ```cypher
    MATCH (n)-[r]->(m) RETURN n, r, m
    ```
+
+---
+
+## Key Technologies (Details)
+
+### Graphiti
+**What:** A Python library that orchestrates the conversion of text into knowledge graphs.
+
+**Role:** Graphiti takes your conversation text, sends it to an LLM (like Ollama) to extract entities and relationships, then stores the structured data in Neo4j. It handles:
+- Prompting the LLM to identify entities (people, symptoms, treatments)
+- Extracting relationships between entities
+- Managing temporal information (when things happened)
+- Deduplicating entities across multiple conversations
+
+**Install:** `pip install graphiti-core` (included in requirements.txt)
+
+---
+
+### Neo4j
+**What:** A graph database optimized for storing and querying connected data.
+
+**Role:** Neo4j stores the knowledge graph — all the entities (nodes) and relationships (edges) extracted from conversations. Unlike traditional databases that store data in tables, Neo4j stores data as a network of connections, making it ideal for questions like "Who is connected to whom?" or "What path connects symptom X to treatment Y?"
+
+**Key features:**
+- Visual graph exploration in the browser
+- Powerful query language (Cypher)
+- Handles complex relationship traversals efficiently
+
+**Install options:**
+- Docker (what we use): `docker run neo4j`
+- Native install: https://neo4j.com/download/
+- Free cloud: https://neo4j.com/cloud/aura-free/
+
+---
+
+### Cypher
+**What:** Neo4j's query language for graph databases.
+
+**Role:** Cypher lets you ask questions about your knowledge graph. It's designed to look like the patterns you're searching for:
+
+```cypher
+-- "Find everyone who supports the patient"
+MATCH (supporter)-[:SUPPORTS]->(patient)
+RETURN supporter.name
+
+-- "What symptoms are linked to what triggers?"
+MATCH (trigger)-[:TRIGGERED]->(symptom)
+RETURN trigger.name, symptom.name
+```
+
+The syntax mirrors graph patterns:
+- `(node)` — a circle/entity
+- `-[relationship]->` — an arrow/connection
+- `MATCH` — find this pattern
+- `RETURN` — show me these parts
+
+---
+
+### Ollama
+**What:** A tool for running large language models (LLMs) locally on your computer.
+
+**Role:** Ollama runs the AI models that understand your text and extract entities. When Graphiti needs to identify "Dr. Wilson prescribed sertraline," it sends the text to Ollama, which uses models like Llama 3.2 to understand and extract that information.
+
+**Why local?** 
+- Free (no API costs)
+- Private (data stays on your machine)
+- Works offline
+
+**Install:** Native app from https://ollama.ai (or `brew install ollama` on Mac)
+
+---
+
+## Extracted Entity Types
+
+| Category | Examples |
+|----------|----------|
+| **People** | Patients, clinicians, therapists, family members, support network |
+| **Symptoms** | Anxiety, depression, sleep disturbance, social withdrawal |
+| **Treatments** | Medications (sertraline, bupropion), therapy approaches (CBT) |
+| **Organizations** | Healthcare facilities, support services, employers |
+| **Temporal** | Symptom onset, treatment duration, episode history |
+| **Relationships** | Who treats whom, who supports whom, what treats what |
 
 ---
 
