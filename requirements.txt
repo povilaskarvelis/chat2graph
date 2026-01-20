@@ -1,0 +1,13 @@
+# Chat2Graph Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core
+graphiti-core>=0.26.0
+python-dotenv>=1.0.0
+
+# API Server
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
+# Neo4j (included with graphiti-core, but listed for clarity)
+neo4j>=5.0.0
