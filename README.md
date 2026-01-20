@@ -195,7 +195,7 @@ python main.py
 
 ---
 
-## Key Technologies (Details)
+## Component Details
 
 ### Graphiti
 **What:** A Python library that orchestrates the conversion of text into knowledge graphs.
