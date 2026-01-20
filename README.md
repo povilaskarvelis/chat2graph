@@ -125,32 +125,59 @@ The syntax mirrors graph patterns:
 ### How They Work Together
 
 ```
+STEP 1: You provide conversation text
 ┌─────────────────────────────────────────────────────────────┐
-│                      Your Application                        │
-│                     (Python scripts)                         │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-                      ▼
+│  "Patient reports anxiety since March. Dr. Wilson           │
+│   prescribed sertraline. Sister Emma provides support."     │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ▼
+STEP 2: Graphiti sends text to Ollama for understanding
 ┌─────────────────────────────────────────────────────────────┐
-│                       Graphiti                               │
-│              (Python library - pip install)                  │
-│                                                              │
-│  • Receives conversation text                                │
-│  • Sends to LLM for entity extraction                        │
-│  • Structures the extracted data                             │
-│  • Stores in Neo4j                                           │
-└──────────┬─────────────────────────────────┬────────────────┘
-           │                                 │
-           ▼                                 ▼
-┌─────────────────────┐         ┌─────────────────────────────┐
-│       Ollama        │         │          Neo4j              │
-│   (native app)      │         │    (Docker container)       │
-│                     │         │                             │
-│ • Runs LLM locally  │         │ • Stores nodes & edges      │
-│ • Extracts entities │         │ • Answers Cypher queries    │
-│ • Creates embeddings│         │ • Visual graph browser      │
-└─────────────────────┘         └─────────────────────────────┘
+│  OLLAMA (local AI)                                          │
+│                                                             │
+│  "I found these entities:"                                  │
+│   • Patient (person)                                        │
+│   • Anxiety (symptom)                                       │
+│   • Dr. Wilson (clinician)                                  │
+│   • Sertraline (medication)                                 │
+│   • Emma (family member)                                    │
+│                                                             │
+│  "And these relationships:"                                 │
+│   • Patient --has_symptom--> Anxiety                        │
+│   • Dr. Wilson --prescribed--> Sertraline                   │
+│   • Emma --supports--> Patient                              │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ▼
+STEP 3: Graphiti stores the structured data in Neo4j
+┌─────────────────────────────────────────────────────────────┐
+│  NEO4J (graph database)                                     │
+│                                                             │
+│       [Dr. Wilson]──prescribed──>[Sertraline]               │
+│                                       │                     │
+│                                     takes                   │
+│                                       ▼                     │
+│        [Emma]───supports───>[Patient]───has───>[Anxiety]    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+STEP 4: You query with Cypher
+┌─────────────────────────────────────────────────────────────┐
+│  Query: "Who supports the patient?"                         │
+│  Cypher: MATCH (s)-[:supports]->(p:Patient) RETURN s        │
+│  Result: Emma                                               │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+**Summary:**
+| Component | Role | Runs As |
+|-----------|------|---------|
+| **Graphiti** | Orchestrates everything | Python library (`pip install`) |
+| **Ollama** | Understands text, extracts entities | Native app |
+| **Neo4j** | Stores graph, answers queries | Docker container |
+| **Cypher** | Query language for Neo4j | Built into Neo4j |
 
 ---
 
@@ -409,7 +436,3 @@ Use connection details from https://neo4j.com/cloud/aura-free/
 ## Disclaimer
 
 This is a research and development tool. Sample conversations are entirely synthetic. Any clinical application would require appropriate validation, privacy safeguards, and regulatory compliance.
-
-## License
-
-MIT
