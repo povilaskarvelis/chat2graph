@@ -11,3 +11,6 @@ uvicorn>=0.23.0
 
 # Neo4j (included with graphiti-core, but listed for clarity)
 neo4j>=5.0.0
+
+# Visualization
+pyvis>=0.3.0

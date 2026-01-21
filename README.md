@@ -1,35 +1,30 @@
 # Chat2Graph 🧠➡️🕸️
 
-A foundation for building mental health applications using knowledge graphs. Extract clinical entities, relationships, and patterns from conversations to enable diagnostics, monitoring, and care coordination tools.
+A tool for analyzing clinical conversations using knowledge graphs. Extracts clinical and semantic entities from mental health interviews to identify patterns that differentiate disorders.
 
 ## Purpose
 
-This project provides the infrastructure for converting unstructured mental health conversations (clinical notes, therapy sessions, care coordination) into structured knowledge graphs that can power:
+This project extracts structured knowledge graphs from clinical conversations to answer:
 
-- **Diagnostic support tools** — Track symptoms, their patterns, and relationships over time
-- **Care coordination systems** — Map patient support networks and provider relationships  
-- **Treatment monitoring** — Link treatments to outcomes and identify what works
-- **Research applications** — Aggregate patterns across anonymized clinical data
+**Can graph structure help identify mental health disorders?**
 
-## What It Does
+By extracting two types of entities:
+- **Clinical entities:** symptoms, DSM criteria, treatments, triggers
+- **Semantic entities:** people, places, objects, topics
 
-Takes clinical conversation text like:
-> "Patient reports increased anxiety since job loss in March. Currently on sertraline prescribed by Dr. Wilson. Sister Emma and partner Michael provide primary support."
+We can compute metrics that differentiate disorders:
 
-And creates a queryable knowledge graph:
-```
-[Patient] --has_symptom--> [Anxiety]
-[Anxiety] --triggered_by--> [Job Loss]
-[Patient] --takes_medication--> [Sertraline]
-[Dr. Wilson] --prescribed--> [Sertraline]
-[Emma] --supports--> [Patient]
-```
+| Disorder | Clinical Nodes | Semantic Nodes | Clinical Ratio |
+|----------|---------------|----------------|----------------|
+| GAD | 11.3 | 4.7 | **70.8%** |
+| ADHD | 6.3 | 4.0 | **61.3%** |
+| Wernicke's Aphasia | 2.0 | 5.0 | **28.6%** |
 
-You can then query: *"What support systems does this patient have?"* or *"What triggered the anxiety symptoms?"*
+**Key finding:** Wernicke's Aphasia shows low clinical ratio and zero internal density because the speech is incoherent and lacks symptom descriptions.
 
 ---
 
-## Quick Start (if already set up)
+## Quick Start
 
 ```bash
 # 1. Make sure Neo4j and Ollama are running
@@ -39,116 +34,120 @@ ollama serve
 # 2. Activate environment
 source venv/bin/activate
 
-# 3. Load clinical interview data
-python load_empirical.py
+# 3. Extract entities from clinical interviews
+python extract_clinical.py all
 
 # 4. Analyze graph patterns by disorder
 python analyze_graphs.py
 
-# 5. Query the graph with natural language
-python chat.py
+# 5. Visualize in Neo4j Browser
+open http://localhost:7474
+# Run: MATCH (n)-[r]->(m) RETURN n, r, m
 ```
 
 ---
 
-## Overview
-
-### Key Components
-
-| Component | What It Does | How It Runs |
-|-----------|--------------|-------------|
-| **Graphiti** | Orchestrates text → graph conversion | Python library (`pip install`) |
-| **Ollama** | Local AI that extracts entities from text | Native app |
-| **Neo4j** | Graph database that stores and queries the data | Docker container |
-| **Cypher** | Query language for asking questions | Built into Neo4j |
-
-### Prerequisites
-
-| Tool | Purpose | Install |
-|------|---------|---------|
-| **Python 3.10+** | Runtime | Check: `python3 --version` |
-| **Docker** | Runs the Neo4j database | [Install Docker](https://docs.docker.com/get-docker/) |
-| **Ollama** | Runs AI models locally | [Install Ollama](https://ollama.ai) |
-
-### How They Work Together
+## How It Works
 
 ```
-STEP 1: You provide conversation text
+STEP 1: Clinical interview transcript
 ┌─────────────────────────────────────────────────────────────┐
-│  "Patient reports anxiety since March. Dr. Wilson           │
-│   prescribed sertraline. Sister Emma provides support."     │
+│  "I've been feeling anxious for about 6 months now.         │
+│   It started after I lost my job. I worry constantly..."    │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
-STEP 2: Graphiti sends text to Ollama for understanding
+STEP 2: LLM extracts clinical + semantic entities
 ┌─────────────────────────────────────────────────────────────┐
-│  OLLAMA (local AI)                                          │
+│  CLINICAL ENTITIES:                                         │
+│   • anxiety (symptom)                                       │
+│   • worry (symptom)                                         │
+│   • 6 months (criterion - duration)                         │
+│   • job loss (trigger)                                      │
 │                                                             │
-│  "I found these entities:"                                  │
-│   • Patient (person)                                        │
-│   • Anxiety (symptom)                                       │
-│   • Dr. Wilson (clinician)                                  │
-│   • Sertraline (medication)                                 │
-│   • Emma (family member)                                    │
-│                                                             │
-│  "And these relationships:"                                 │
-│   • Patient --has_symptom--> Anxiety                        │
-│   • Dr. Wilson --prescribed--> Sertraline                   │
-│   • Emma --supports--> Patient                              │
+│  SEMANTIC ENTITIES:                                         │
+│   • Sarah (person)                                          │
+│   • Dr. Grande (person)                                     │
+│   • work (place)                                            │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
-STEP 3: Graphiti stores the structured data in Neo4j
+STEP 3: Store in Neo4j with entity type labels
 ┌─────────────────────────────────────────────────────────────┐
-│  NEO4J (graph database)                                     │
+│  (:Episode {name: 'gad_sarah_001'})                         │
+│       │                                                     │
+│       ├──MENTIONS──>(:Clinical {name: 'anxiety'})           │
+│       ├──MENTIONS──>(:Clinical {name: 'worry'})             │
+│       ├──MENTIONS──>(:Semantic {name: 'Sarah'})             │
+│       └──MENTIONS──>(:Semantic {name: 'Dr. Grande'})        │
 │                                                             │
-│       [Dr. Wilson]──prescribed──>[Sertraline]               │
-│                                       │                     │
-│                                     takes                   │
-│                                       ▼                     │
-│        [Emma]───supports───>[Patient]───has───>[Anxiety]    │
-│                                                             │
+│  (Sarah)──HAS_SYMPTOM──>(anxiety)                           │
+│  (job loss)──TRIGGERS──>(anxiety)                           │
 └─────────────────────────────────────────────────────────────┘
                           │
                           ▼
-STEP 4: You query with Cypher
+STEP 4: Analyze patterns by disorder
 ┌─────────────────────────────────────────────────────────────┐
-│  Query: "Who supports the patient?"                         │
-│  Cypher: MATCH (s)-[:supports]->(p:Patient) RETURN s        │
-│  Result: Emma                                               │
+│  Clinical Ratio = clinical / (clinical + semantic)          │
+│                                                             │
+│  GAD:        70.8%  (many symptoms described)               │
+│  ADHD:       61.3%  (many symptoms described)               │
+│  Wernicke's: 28.6%  (incoherent, few symptoms)              │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Architecture
+
+| Component | Purpose | How to Run |
+|-----------|---------|------------|
+| **Ollama** | Local LLM for entity extraction | `ollama serve` |
+| **Neo4j** | Graph database for storage | `docker start neo4j` |
+| **extract_clinical.py** | Extract entities from transcripts | `python extract_clinical.py` |
+| **analyze_graphs.py** | Compare patterns by disorder | `python analyze_graphs.py` |
+
+### Entity Types
+
+**Clinical Entities** (mental health specific):
+- Symptoms: anxiety, worry, fatigue, sleep problems, attention issues
+- DSM Criteria: duration ("6 months"), frequency ("more days than not")
+- Treatments: medications, therapy types, coping strategies
+- Triggers: life events, stressors
+
+**Semantic Entities** (general concepts):
+- People: patient, clinician, family members
+- Places: school, work, home, clinic
+- Objects: physical items mentioned
+- Topics: abstract concepts discussed
 
 ---
 
 ## Setup Guide
 
-### Step 1: Clone the Repository
+### Prerequisites
+
+| Tool | Purpose | Install |
+|------|---------|---------|
+| **Python 3.10+** | Runtime | `python3 --version` |
+| **Docker** | Runs Neo4j | [Install Docker](https://docs.docker.com/get-docker/) |
+| **Ollama** | Local LLM | [Install Ollama](https://ollama.ai) |
+
+### Step 1: Clone and Setup
 
 ```bash
 git clone https://github.com/povilaskarvelis/chat2graph.git
 cd chat2graph
-```
 
-### Step 2: Set Up Python Environment
-
-This installs Graphiti and other Python dependencies:
-
-```bash
 # Create virtual environment
 python3 -m venv venv
+source venv/bin/activate
 
-# Activate it
-source venv/bin/activate  # Mac/Linux
-# venv\Scripts\activate   # Windows
-
-# Install Graphiti and dependencies
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### Step 3: Start Neo4j (Graph Database)
-
-Neo4j stores the knowledge graph. The easiest way to run it is with Docker:
+### Step 2: Start Neo4j
 
 ```bash
 docker run -d \
@@ -159,212 +158,102 @@ docker run -d \
   neo4j:latest
 ```
 
-- Port `7474` — Web browser interface
-- Port `7687` — Database connection (Bolt protocol)
-
-Wait ~30 seconds, then verify: `docker ps`
-
-### Step 4: Start Ollama (Local AI)
-
-Ollama runs the AI models that extract entities from text:
+### Step 3: Start Ollama
 
 ```bash
-# Start Ollama (runs in background)
 ollama serve
+ollama pull llama3.1:8b  # Or llama3.2
 ```
 
-In a **new terminal**, download the required models:
-```bash
-ollama pull llama3.2           # Language model for understanding text (~2GB)
-ollama pull nomic-embed-text   # Embedding model for similarity search (~300MB)
-```
+### Step 4: Configure
 
-### Step 5: Create Configuration
-
-Create a `.env` file in the project root:
+Create `.env` file:
 
 ```bash
-# AI Model (Ollama - local, free)
-LLM_PROVIDER=ollama
-OLLAMA_MODEL=llama3.2
-OLLAMA_BASE_URL=http://localhost:11434/v1
-OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+# Ollama
+OLLAMA_MODEL=llama3.1:8b
 
-# Neo4j Database
+# Neo4j
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=password123
-
-# Required placeholder
-OPENAI_API_KEY=dummy
 ```
 
-### Step 6: Run It
+### Step 5: Run Extraction
 
 ```bash
-source venv/bin/activate
+# Extract from all conversations
+python extract_clinical.py all
+
+# Or extract one at a time
+python extract_clinical.py gad_sarah_001
 ```
 
-**Option A: Load empirical clinical interviews (recommended)**
+### Step 6: Analyze
+
 ```bash
-python load_empirical.py
+python analyze_graphs.py
 ```
-Loads 7 clinical interview transcripts covering GAD, ADHD, and Wernicke's Aphasia. Includes both threshold and subthreshold cases. Takes ~10-15 minutes with Ollama.
 
-**Option B: Load synthetic sample conversations**
-```bash
-python load_conversations.py
-```
-Loads 5 fictional mental health conversations (clinical intake, care coordination, therapy sessions, etc.).
+### Step 7: Visualize
 
-**Option C: Quick demo**
-```bash
-python main.py
-```
-Runs a quick demo with a single conversation to verify everything works.
-
-### Step 7: View the Knowledge Graph
-
-1. Open **http://localhost:7474** in your browser
-2. Login: `neo4j` / `password123`
-3. Run this Cypher query to see your graph:
-   ```cypher
-   MATCH (n)-[r]->(m) RETURN n, r, m
-   ```
-
----
-
-## Component Details
-
-### Graphiti
-**What:** A Python library that orchestrates the conversion of text into knowledge graphs.
-
-**Role:** Graphiti takes your conversation text, sends it to an LLM (like Ollama) to extract entities and relationships, then stores the structured data in Neo4j. It handles:
-- Prompting the LLM to identify entities (people, symptoms, treatments)
-- Extracting relationships between entities
-- Managing temporal information (when things happened)
-- Deduplicating entities across multiple conversations
-
-**Install:** `pip install graphiti-core` (included in requirements.txt)
-
----
-
-### Neo4j
-**What:** A graph database optimized for storing and querying connected data.
-
-**Role:** Neo4j stores the knowledge graph — all the entities (nodes) and relationships (edges) extracted from conversations. Unlike traditional databases that store data in tables, Neo4j stores data as a network of connections, making it ideal for questions like "Who is connected to whom?" or "What path connects symptom X to treatment Y?"
-
-**Key features:**
-- Visual graph exploration in the browser
-- Powerful query language (Cypher)
-- Handles complex relationship traversals efficiently
-
-**Install options:**
-- Docker (what we use): `docker run neo4j`
-- Native install: https://neo4j.com/download/
-- Free cloud: https://neo4j.com/cloud/aura-free/
-
----
-
-### Cypher
-**What:** Neo4j's query language for graph databases.
-
-**Role:** Cypher lets you ask questions about your knowledge graph. It's designed to look like the patterns you're searching for:
+Open http://localhost:7474 and run:
 
 ```cypher
--- "Find everyone who supports the patient"
-MATCH (supporter)-[:SUPPORTS]->(patient)
-RETURN supporter.name
-
--- "What symptoms are linked to what triggers?"
-MATCH (trigger)-[:TRIGGERED]->(symptom)
-RETURN trigger.name, symptom.name
+MATCH (n)-[r]->(m) RETURN n, r, m
 ```
 
-The syntax mirrors graph patterns:
-- `(node)` — a circle/entity
-- `-[relationship]->` — an arrow/connection
-- `MATCH` — find this pattern
-- `RETURN` — show me these parts
-
 ---
 
-### Ollama
-**What:** A tool for running large language models (LLMs) locally on your computer.
+## Analysis Output
 
-**Role:** Ollama runs the AI models that understand your text and extract entities. When Graphiti needs to identify "Dr. Wilson prescribed sertraline," it sends the text to Ollama, which uses models like Llama 3.2 to understand and extract that information.
+Running `python analyze_graphs.py` produces:
 
-**Why local?** 
-- Free (no API costs)
-- Private (data stays on your machine)
-- Works offline
+```
+===========================================================================
+  CLINICAL KNOWLEDGE GRAPH ANALYSIS
+  Comparing Clinical vs Semantic Entities by Disorder
+===========================================================================
 
-**Install:** Native app from https://ollama.ai (or `brew install ollama` on Mac)
+NODE COUNTS:
+                        Clinical   Semantic   Clinical Ratio
+                        Nodes      Nodes      (higher = more clinical)
+  -------------------------------------------------------------
+  GAD                    11.3        4.7        70.8%
+  ADHD                    6.3        4.0        61.3%
+  Wernicke's Aphasia      2.0        5.0        28.6%
 
----
+DENSITY BY CONNECTION TYPE:
+                        Clinical   Semantic   Cross-type
+                        Density    Density    Density
+  -------------------------------------------------------------
+  GAD                   0.003      0.139        0.047
+  ADHD                  0.009      0.044        0.017
+  Wernicke's Aphasia    0.000      0.000        0.100
+```
 
-## Extracted Entity Types
-
-| Category | Examples |
-|----------|----------|
-| **People** | Patients, clinicians, therapists, family members, support network |
-| **Symptoms** | Anxiety, depression, sleep disturbance, social withdrawal |
-| **Treatments** | Medications (sertraline, bupropion), therapy approaches (CBT) |
-| **Organizations** | Healthcare facilities, support services, employers |
-| **Temporal** | Symptom onset, treatment duration, episode history |
-| **Relationships** | Who treats whom, who supports whom, what treats what |
+**Interpretation:**
+- **High clinical ratio** = patient describing clear symptoms (GAD, ADHD)
+- **Low clinical ratio** = speech without clinical content (Wernicke's)
+- **Zero density** = disconnected entities (incoherent speech)
 
 ---
 
 ## Clinical Interview Data
 
-The `empirical_conversations.py` file contains transcripts from Dr. Todd Grande's educational demonstration videos. **Note:** The "patients" are actors portraying scripted scenarios - these are NOT real patients with actual diagnoses. The diagnostic determinations reflect what would apply if the presented symptoms were from a real patient.
+The `empirical_conversations.py` file contains transcripts from Dr. Todd Grande's educational videos.
 
-Three conditions are demonstrated:
+**Note:** The "patients" are actors portraying scripted scenarios — NOT real patients.
 
-| Conversation | Condition Demonstrated | Portrayed as Meeting Criteria? |
-|--------------|------------------------|-------------------------------|
-| `gad_sarah_001` | Generalized Anxiety Disorder | Yes |
-| `gad_sarah_002` | GAD (with comorbidities) | Yes |
+| Conversation | Condition | Meets Criteria? |
+|--------------|-----------|-----------------|
+| `gad_sarah_001` | GAD | Yes |
+| `gad_sarah_002` | GAD (comorbidities) | Yes |
 | `gad_sarah_003` | GAD (subthreshold) | No |
 | `adhd_elise_001` | ADHD | No |
 | `adhd_elise_002` | ADHD Combined | Yes |
-| `adhd_elise_003` | ADHD (online student) | Yes |
+| `adhd_elise_003` | ADHD | Yes |
 | `wernickes_aphasia_byron_001` | Wernicke's Aphasia | Yes |
-
-### Disorder Pattern Analysis
-
-The key research question: **Can knowledge graph structure help identify disorders?**
-
-Each disorder type should produce distinct graph signatures:
-
-| Disorder | Expected Graph Patterns |
-|----------|------------------------|
-| **GAD** | Many worry-related nodes, physical symptoms (fatigue, tension, sleep), temporal markers, interconnected concerns |
-| **ADHD** | Inattention + hyperactivity symptom clusters, multiple settings (school, work, home), childhood onset references |
-| **Wernicke's Aphasia** | Fragmented/incoherent entities, fewer logical connections, potentially nonsensical relationships |
-
-Run the analysis:
-```bash
-python load_empirical.py     # Load the clinical interviews
-python analyze_graphs.py     # Compare graph metrics by disorder
-```
-
----
-
-## Synthetic Sample Data
-
-The `sample_conversations.py` file contains fictional mental health conversations for testing:
-
-| Conversation | Type |
-|--------------|------|
-| `intake_assessment_001` | Clinical intake with symptom history |
-| `care_coordination_002` | Multidisciplinary team meeting |
-| `therapy_session_015` | CBT session notes |
-| `support_group_session` | Facilitated group discussion |
-| `treatment_planning_review` | Quarterly progress review |
-
-**Note:** All synthetic data is entirely fictional and created for testing purposes.
 
 ---
 
@@ -372,138 +261,49 @@ The `sample_conversations.py` file contains fictional mental health conversation
 
 | File | Purpose | How to Run |
 |------|---------|------------|
-| `load_empirical.py` | **Load clinical interview transcripts** | `python load_empirical.py` |
+| `extract_clinical.py` | **Extract entities from transcripts** | `python extract_clinical.py all` |
 | `analyze_graphs.py` | **Compare graph patterns by disorder** | `python analyze_graphs.py` |
 | `chat.py` | Query the graph with natural language | `python chat.py` |
-| `load_conversations.py` | Load synthetic sample data | `python load_conversations.py` |
-| `main.py` | Quick demo with simple conversation | `python main.py` |
-| `api_server.py` | REST API for programmatic access | `python api_server.py` |
-| `empirical_conversations.py` | Clinical interview data (GAD, ADHD, Aphasia) | — |
+| `empirical_conversations.py` | Clinical interview data | — |
 | `sample_conversations.py` | Synthetic sample data | — |
 
 ---
 
-## Using the API
+## Cypher Queries
 
-For integration with other systems:
-
-```bash
-python api_server.py
-```
-
-Endpoints at **http://localhost:8080**:
-
-```bash
-# Add clinical notes
-curl -X POST http://localhost:8080/add_conversation \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "session_042",
-    "content": "Patient reports improved sleep after starting melatonin...",
-    "source_description": "Therapy session notes"
-  }'
-
-# Query the graph
-curl -X POST http://localhost:8080/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "What treatments has this patient tried?"}'
-```
-
----
-
-## Natural Language Chat
-
-You can query the knowledge graph using natural language — no Cypher required!
-
-### Run the Chat Interface
-
-```bash
-python chat.py
-```
-
-### Example Session
-
-```
-╔══════════════════════════════════════════════════════════════╗
-║        Mental Health Knowledge Graph - Chat Interface        ║
-╚══════════════════════════════════════════════════════════════╝
-
-📊 Connected! Graph has 85 entities, 122 relationships
-
-🔍 Ask a question: What medications have been prescribed?
-
-📋 Results:
-   1. Dr. Chen prescribed sertraline to the patient.
-   2. Dr. Chen prescribed bupropion to the patient.
-   3. Dr. James Wilson prescribed sertraline to the patient last month.
-
-🔍 Ask a question: Who supports the patient?
-
-📋 Results:
-   1. Michael supports the patient.
-   2. Emma provides support to the patient.
-```
-
-### Example Questions
-
-- *"What symptoms has the patient experienced?"*
-- *"Who provides support to the patient?"*
-- *"What medications have been prescribed?"*
-- *"Who is Dr. Chen?"*
-- *"What triggered the anxiety?"*
-- *"What is the care team?"*
-
-### How It Works
-
-The chat interface uses **Graphiti's semantic search**:
-1. Your question is converted to an embedding (numerical representation)
-2. The system finds facts in the knowledge graph with similar meaning
-3. Results are ranked by relevance and returned
-
-This means you can ask questions naturally without knowing Cypher syntax.
-
----
-
-## Example Cypher Queries
-
+View full graph:
 ```cypher
--- Find all symptoms mentioned
-MATCH (n:Entity) WHERE n.entity_type = 'symptom' RETURN n
-
--- Find patient support networks
-MATCH (supporter)-[r]->(patient)
-WHERE r.fact CONTAINS 'support'
-RETURN supporter, r, patient
-
--- Find medication relationships
-MATCH (provider)-[r]->(medication)
-WHERE r.fact CONTAINS 'prescribed'
-RETURN provider.name, medication.name
-
--- Track symptom triggers
-MATCH (trigger)-[r]->(symptom)
-WHERE r.fact CONTAINS 'trigger'
-RETURN trigger, symptom
-
--- See all entities and relationships
 MATCH (n)-[r]->(m) RETURN n, r, m
 ```
 
----
+View one conversation:
+```cypher
+MATCH (e:Episode {name: 'gad_sarah_001'})-[:MENTIONS]->(n)
+OPTIONAL MATCH (n)-[r]->(m)
+RETURN e, n, r, m
+```
 
-## Future Development
+View only clinical entities:
+```cypher
+MATCH (e:Episode)-[:MENTIONS]->(n:Clinical)
+RETURN e, n
+```
 
-This infrastructure can support:
+Compare Wernicke's vs GAD:
+```cypher
+MATCH (e:Episode)-[:MENTIONS]->(n)
+WHERE e.name IN ['gad_sarah_001', 'wernickes_aphasia_byron_001']
+OPTIONAL MATCH (n)-[r]->(m)
+RETURN e, n, r, m
+```
 
-- [x] Graph-based disorder pattern analysis
-- [ ] Machine learning on graph features for diagnosis support
-- [ ] Symptom trajectory visualization
-- [ ] Treatment outcome analysis
-- [ ] Care team network mapping
-- [ ] Risk factor identification
-- [ ] Natural language clinical queries
-- [ ] Integration with EHR systems
-- [ ] Anonymized research data aggregation
+Count by entity type:
+```cypher
+MATCH (e:Episode)-[:MENTIONS]->(n)
+RETURN e.name, 
+       sum(CASE WHEN n:Clinical THEN 1 ELSE 0 END) as clinical,
+       sum(CASE WHEN n:Semantic THEN 1 ELSE 0 END) as semantic
+```
 
 ---
 
@@ -515,47 +315,29 @@ docker ps          # Check if running
 docker start neo4j # Start if stopped
 ```
 
-### Ollama model not found
+### Ollama errors
 ```bash
-ollama serve                    # Make sure it's running
-ollama pull llama3.2           # Pull models
-ollama pull nomic-embed-text
+ollama serve       # Make sure it's running
+ollama list        # Check available models
 ```
 
-### Processing is slow
-Local AI takes 1-2 minutes per conversation. For faster processing, see alternatives below.
-
----
-
-## Alternative Configurations
-
-### Groq (Free, Fast Cloud AI)
+### Clear and re-extract
 ```bash
-LLM_PROVIDER=groq
-GROQ_API_KEY=your_key_here
-GROQ_MODEL=llama-3.1-8b-instant
+# Clear database
+python -c "
+from neo4j import GraphDatabase
+driver = GraphDatabase.driver('bolt://localhost:7687', auth=('neo4j', 'password123'))
+with driver.session() as s: s.run('MATCH (n) DETACH DELETE n')
+driver.close()
+print('Cleared!')
+"
+
+# Re-extract
+python extract_clinical.py all
 ```
-
-### OpenAI (Paid, Highest Quality)
-```bash
-LLM_PROVIDER=openai
-OPENAI_API_KEY=your_key_here
-OPENAI_MODEL=gpt-4o-mini
-```
-
-### Neo4j Aura (Free Cloud Database)
-Use connection details from https://neo4j.com/cloud/aura-free/
-
----
-
-## Resources
-
-- [Graphiti Documentation](https://github.com/getzep/graphiti)
-- [Neo4j Cypher Query Language](https://neo4j.com/docs/cypher-manual/)
-- [Ollama Models](https://ollama.ai/library)
 
 ---
 
 ## Disclaimer
 
-This is a research and development tool. Sample conversations are entirely synthetic. Any clinical application would require appropriate validation, privacy safeguards, and regulatory compliance.
+This is a research and development tool. Clinical interview data is from educational demonstrations with actors, not real patients. Any clinical application would require appropriate validation, privacy safeguards, and regulatory compliance.
