@@ -1,0 +1,819 @@
+{
+  "exported_at": "2026-01-21T11:18:28.285881",
+  "overall": {
+    "total_entities": 94,
+    "clinical_entities": 62,
+    "semantic_entities": 32,
+    "total_relationships": 137,
+    "episodes": 6
+  },
+  "by_episode": {
+    "gad_sarah_002": {
+      "metrics": {
+        "clinical": 12,
+        "semantic": 5,
+        "total": 17,
+        "relationships": 14,
+        "clinical_rels": 0,
+        "semantic_rels": 2,
+        "cross_rels": 12,
+        "clinical_density": 0.0,
+        "semantic_density": 0.1,
+        "cross_density": 0.1,
+        "overall_density": 0.051470588235294115
+      },
+      "clinical_entities": [
+        {
+          "name": "CBT",
+          "type": "treatment"
+        },
+        {
+          "name": "fidgeting",
+          "type": "symptom"
+        },
+        {
+          "name": "hyperactivity",
+          "type": "symptom"
+        },
+        {
+          "name": "muscle tension",
+          "type": "symptom"
+        },
+        {
+          "name": "irritability",
+          "type": "symptom"
+        },
+        {
+          "name": "restlessness",
+          "type": "symptom"
+        },
+        {
+          "name": "attention issues",
+          "type": "symptom"
+        },
+        {
+          "name": "sleep problems",
+          "type": "symptom"
+        },
+        {
+          "name": "fatigue",
+          "type": "symptom"
+        },
+        {
+          "name": "depression",
+          "type": "symptom"
+        },
+        {
+          "name": "worry",
+          "type": "symptom"
+        },
+        {
+          "name": "anxiety",
+          "type": "symptom"
+        }
+      ],
+      "semantic_entities": [
+        {
+          "name": "Sarah",
+          "type": "person"
+        },
+        {
+          "name": "Dr. Todd Grande",
+          "type": "person"
+        },
+        {
+          "name": "school",
+          "type": "place"
+        },
+        {
+          "name": "education",
+          "type": "topic"
+        },
+        {
+          "name": "family",
+          "type": "topic"
+        }
+      ],
+      "relationships": [
+        {
+          "from": "anxiety",
+          "to": "Sarah",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences anxiety"
+        },
+        {
+          "from": "worry",
+          "to": "Sarah",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences worry"
+        },
+        {
+          "from": "depression",
+          "to": "Sarah",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences depression"
+        },
+        {
+          "from": "fatigue",
+          "to": "Sarah",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences fatigue"
+        },
+        {
+          "from": "sleep problems",
+          "to": "Sarah",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences sleep problems"
+        },
+        {
+          "from": "attention issues",
+          "to": "Sarah",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences attention issues"
+        },
+        {
+          "from": "restlessness",
+          "to": "Sarah",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences restlessness"
+        },
+        {
+          "from": "irritability",
+          "to": "Sarah",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences irritability"
+        },
+        {
+          "from": "muscle tension",
+          "to": "Sarah",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences muscle tension"
+        },
+        {
+          "from": "hyperactivity",
+          "to": "Sarah",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences hyperactivity"
+        },
+        {
+          "from": "fidgeting",
+          "to": "Sarah",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences fidgeting"
+        },
+        {
+          "from": "CBT",
+          "to": "Sarah",
+          "type": "TREATS",
+          "description": "addresses symptoms"
+        },
+        {
+          "from": "Dr. Todd Grande",
+          "to": "Sarah",
+          "type": "PRESCRIBES",
+          "description": "prescribes treatment"
+        },
+        {
+          "from": "school",
+          "to": "Sarah",
+          "type": "AFFECTS",
+          "description": "impacts school performance"
+        }
+      ],
+      "disorder": "GAD",
+      "meets_criteria": true
+    },
+    "gad_sarah_003": {
+      "metrics": {
+        "clinical": 11,
+        "semantic": 5,
+        "total": 16,
+        "relationships": 3,
+        "clinical_rels": 0,
+        "semantic_rels": 1,
+        "cross_rels": 2,
+        "clinical_density": 0.0,
+        "semantic_density": 0.05,
+        "cross_density": 0.01818181818181818,
+        "overall_density": 0.0125
+      },
+      "clinical_entities": [
+        {
+          "name": "CBT",
+          "type": "treatment"
+        },
+        {
+          "name": "fidgeting",
+          "type": "symptom"
+        },
+        {
+          "name": "hyperactivity",
+          "type": "symptom"
+        },
+        {
+          "name": "muscle tension",
+          "type": "symptom"
+        },
+        {
+          "name": "irritability",
+          "type": "symptom"
+        },
+        {
+          "name": "restlessness",
+          "type": "symptom"
+        },
+        {
+          "name": "sleep problems",
+          "type": "symptom"
+        },
+        {
+          "name": "fatigue",
+          "type": "symptom"
+        },
+        {
+          "name": "depression",
+          "type": "symptom"
+        },
+        {
+          "name": "anxiety",
+          "type": "symptom"
+        },
+        {
+          "name": "worry",
+          "type": "symptom"
+        }
+      ],
+      "semantic_entities": [
+        {
+          "name": "Sarah",
+          "type": "person"
+        },
+        {
+          "name": "Dr. Todd Grande",
+          "type": "person"
+        },
+        {
+          "name": "school",
+          "type": "place"
+        },
+        {
+          "name": "mental health",
+          "type": "topic"
+        },
+        {
+          "name": "symptoms",
+          "type": "topic"
+        }
+      ],
+      "relationships": [
+        {
+          "from": "Sarah",
+          "to": "worry",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences"
+        },
+        {
+          "from": "Dr. Todd Grande",
+          "to": "CBT",
+          "type": "PRESCRIBES",
+          "description": "prescribes treatment for"
+        },
+        {
+          "from": "school",
+          "to": "Sarah",
+          "type": "AFFECTS",
+          "description": "does not experience symptoms at"
+        }
+      ],
+      "disorder": "GAD",
+      "meets_criteria": false
+    },
+    "wernickes_aphasia_byron_001": {
+      "metrics": {
+        "clinical": 2,
+        "semantic": 5,
+        "total": 7,
+        "relationships": 3,
+        "clinical_rels": 0,
+        "semantic_rels": 1,
+        "cross_rels": 2,
+        "clinical_density": 0.0,
+        "semantic_density": 0.05,
+        "cross_density": 0.1,
+        "overall_density": 0.07142857142857142
+      },
+      "clinical_entities": [
+        {
+          "name": "worry",
+          "type": "symptom"
+        },
+        {
+          "name": "anxiety",
+          "type": "symptom"
+        }
+      ],
+      "semantic_entities": [
+        {
+          "name": "Donna",
+          "type": "person"
+        },
+        {
+          "name": "Byron",
+          "type": "person"
+        },
+        {
+          "name": "iPad",
+          "type": "object"
+        },
+        {
+          "name": "golf",
+          "type": "topic"
+        },
+        {
+          "name": "world",
+          "type": "topic"
+        }
+      ],
+      "relationships": [
+        {
+          "from": "worry",
+          "to": "Byron",
+          "type": "HAS_SYMPTOM",
+          "description": "Byron experiences worry"
+        },
+        {
+          "from": "Donna",
+          "to": "Byron",
+          "type": "SUPPORTS",
+          "description": "Byron talks with Donna sometimes"
+        },
+        {
+          "from": "Byron",
+          "to": "anxiety",
+          "type": "HAS_SYMPTOM",
+          "description": "Byron experiences anxiety"
+        }
+      ],
+      "disorder": "Wernicke's Aphasia",
+      "meets_criteria": true
+    },
+    "gad_sarah_001": {
+      "metrics": {
+        "clinical": 11,
+        "semantic": 5,
+        "total": 16,
+        "relationships": 3,
+        "clinical_rels": 0,
+        "semantic_rels": 2,
+        "cross_rels": 1,
+        "clinical_density": 0.0,
+        "semantic_density": 0.1,
+        "cross_density": 0.00909090909090909,
+        "overall_density": 0.0125
+      },
+      "clinical_entities": [
+        {
+          "name": "fidgeting",
+          "type": "symptom"
+        },
+        {
+          "name": "hyperactivity",
+          "type": "symptom"
+        },
+        {
+          "name": "muscle tension",
+          "type": "symptom"
+        },
+        {
+          "name": "irritability",
+          "type": "symptom"
+        },
+        {
+          "name": "restlessness",
+          "type": "symptom"
+        },
+        {
+          "name": "attention issues",
+          "type": "symptom"
+        },
+        {
+          "name": "sleep problems",
+          "type": "symptom"
+        },
+        {
+          "name": "fatigue",
+          "type": "symptom"
+        },
+        {
+          "name": "depression",
+          "type": "criterion"
+        },
+        {
+          "name": "worry",
+          "type": "symptom"
+        },
+        {
+          "name": "anxiety",
+          "type": "symptom"
+        }
+      ],
+      "semantic_entities": [
+        {
+          "name": "Sarah",
+          "type": "person"
+        },
+        {
+          "name": "Dr. Todd Grande",
+          "type": "person"
+        },
+        {
+          "name": "school",
+          "type": "place"
+        },
+        {
+          "name": "anxiety",
+          "type": "topic"
+        },
+        {
+          "name": "worry",
+          "type": "topic"
+        }
+      ],
+      "relationships": [
+        {
+          "from": "Sarah",
+          "to": "anxiety",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences anxiety"
+        },
+        {
+          "from": "Sarah",
+          "to": "anxiety",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences anxiety"
+        },
+        {
+          "from": "Dr. Todd Grande",
+          "to": "Sarah",
+          "type": "SUPPORTS",
+          "description": "supports patient"
+        }
+      ],
+      "disorder": "GAD",
+      "meets_criteria": true
+    },
+    "adhd_elise_001": {
+      "metrics": {
+        "clinical": 15,
+        "semantic": 6,
+        "total": 21,
+        "relationships": 15,
+        "clinical_rels": 0,
+        "semantic_rels": 1,
+        "cross_rels": 14,
+        "clinical_density": 0.0,
+        "semantic_density": 0.03333333333333333,
+        "cross_density": 0.07777777777777778,
+        "overall_density": 0.03571428571428571
+      },
+      "clinical_entities": [
+        {
+          "name": "CBT",
+          "type": "treatment"
+        },
+        {
+          "name": "bupropion",
+          "type": "treatment"
+        },
+        {
+          "name": "sertraline",
+          "type": "treatment"
+        },
+        {
+          "name": "ADHD",
+          "type": "criterion"
+        },
+        {
+          "name": "fidgeting",
+          "type": "symptom"
+        },
+        {
+          "name": "hyperactivity",
+          "type": "symptom"
+        },
+        {
+          "name": "muscle tension",
+          "type": "symptom"
+        },
+        {
+          "name": "irritability",
+          "type": "symptom"
+        },
+        {
+          "name": "restlessness",
+          "type": "symptom"
+        },
+        {
+          "name": "attention issues",
+          "type": "symptom"
+        },
+        {
+          "name": "sleep problems",
+          "type": "symptom"
+        },
+        {
+          "name": "fatigue",
+          "type": "symptom"
+        },
+        {
+          "name": "depression",
+          "type": "symptom"
+        },
+        {
+          "name": "worry",
+          "type": "symptom"
+        },
+        {
+          "name": "anxiety",
+          "type": "symptom"
+        }
+      ],
+      "semantic_entities": [
+        {
+          "name": "Elise",
+          "type": "person"
+        },
+        {
+          "name": "Dr. Todd Grande",
+          "type": "person"
+        },
+        {
+          "name": "school",
+          "type": "place"
+        },
+        {
+          "name": "work",
+          "type": "place"
+        },
+        {
+          "name": "home",
+          "type": "place"
+        },
+        {
+          "name": "clinic",
+          "type": "place"
+        }
+      ],
+      "relationships": [
+        {
+          "from": "Elise",
+          "to": "ADHD",
+          "type": "TRIGGERS",
+          "description": "experiences symptoms due to ADHD"
+        },
+        {
+          "from": "Elise",
+          "to": "fidgeting",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences fidgeting"
+        },
+        {
+          "from": "Elise",
+          "to": "hyperactivity",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences hyperactivity"
+        },
+        {
+          "from": "Elise",
+          "to": "muscle tension",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences muscle tension"
+        },
+        {
+          "from": "Elise",
+          "to": "irritability",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences irritability"
+        },
+        {
+          "from": "Elise",
+          "to": "restlessness",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences restlessness"
+        },
+        {
+          "from": "Elise",
+          "to": "attention issues",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences attention issues"
+        },
+        {
+          "from": "Elise",
+          "to": "sleep problems",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences sleep problems"
+        },
+        {
+          "from": "Elise",
+          "to": "fatigue",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences fatigue"
+        },
+        {
+          "from": "Elise",
+          "to": "depression",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences depression"
+        },
+        {
+          "from": "Elise",
+          "to": "worry",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences worry"
+        },
+        {
+          "from": "Elise",
+          "to": "anxiety",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences anxiety"
+        },
+        {
+          "from": "Dr. Todd Grande",
+          "to": "Elise",
+          "type": "PRESCRIBES",
+          "description": "prescribes treatment for Elise"
+        },
+        {
+          "from": "school",
+          "to": "attention issues",
+          "type": "AFFECTS",
+          "description": "symptoms affect school performance"
+        },
+        {
+          "from": "work",
+          "to": "attention issues",
+          "type": "AFFECTS",
+          "description": "symptoms affect work performance"
+        }
+      ],
+      "disorder": "ADHD",
+      "meets_criteria": false
+    },
+    "adhd_elise_003": {
+      "metrics": {
+        "clinical": 11,
+        "semantic": 6,
+        "total": 17,
+        "relationships": 5,
+        "clinical_rels": 1,
+        "semantic_rels": 3,
+        "cross_rels": 1,
+        "clinical_density": 0.00909090909090909,
+        "semantic_density": 0.1,
+        "cross_density": 0.007575757575757576,
+        "overall_density": 0.01838235294117647
+      },
+      "clinical_entities": [
+        {
+          "name": "hyperactivity type symptoms",
+          "type": "symptom"
+        },
+        {
+          "name": "attention issues",
+          "type": "symptom"
+        },
+        {
+          "name": "sleep problems",
+          "type": "symptom"
+        },
+        {
+          "name": "fatigue",
+          "type": "symptom"
+        },
+        {
+          "name": "muscle tension",
+          "type": "symptom"
+        },
+        {
+          "name": "irritability",
+          "type": "symptom"
+        },
+        {
+          "name": "restlessness",
+          "type": "symptom"
+        },
+        {
+          "name": "fidgeting",
+          "type": "symptom"
+        },
+        {
+          "name": "hyperactivity",
+          "type": "symptom"
+        },
+        {
+          "name": "difficulty paying attention",
+          "type": "symptom"
+        },
+        {
+          "name": "ADHD",
+          "type": "symptom"
+        }
+      ],
+      "semantic_entities": [
+        {
+          "name": "Elise",
+          "type": "person"
+        },
+        {
+          "name": "Dr. Todd Grande",
+          "type": "person"
+        },
+        {
+          "name": "parents",
+          "type": "person"
+        },
+        {
+          "name": "school",
+          "type": "place"
+        },
+        {
+          "name": "home",
+          "type": "place"
+        },
+        {
+          "name": "clinic",
+          "type": "place"
+        }
+      ],
+      "relationships": [
+        {
+          "from": "ADHD",
+          "to": "hyperactivity",
+          "type": "TRIGGERS",
+          "description": "symptoms of ADHD trigger hyperactivity"
+        },
+        {
+          "from": "Elise",
+          "to": "school",
+          "type": "AFFECTS",
+          "description": "symptoms affect school performance"
+        },
+        {
+          "from": "Elise",
+          "to": "ADHD",
+          "type": "HAS_SYMPTOM",
+          "description": "experiences symptoms of ADHD"
+        },
+        {
+          "from": "Dr. Todd Grande",
+          "to": "Elise",
+          "type": "PRESCRIBES",
+          "description": "clinician prescribes treatment for patient"
+        },
+        {
+          "from": "Dr. Todd Grande",
+          "to": "Elise",
+          "type": "SUPPORTS",
+          "description": "clinician supports patient"
+        }
+      ],
+      "disorder": "ADHD",
+      "meets_criteria": true
+    }
+  },
+  "by_disorder": {
+    "GAD": {
+      "episode_count": 3,
+      "meets_criteria_count": 2,
+      "avg_clinical_entities": 11.33,
+      "avg_semantic_entities": 5.0,
+      "avg_clinical_ratio": 0.6939,
+      "avg_relationships": 6.67,
+      "avg_clinical_density": 0.0,
+      "avg_semantic_density": 0.0833,
+      "avg_cross_density": 0.0424
+    },
+    "ADHD": {
+      "episode_count": 3,
+      "meets_criteria_count": 2,
+      "avg_clinical_entities": 8.67,
+      "avg_semantic_entities": 4.0,
+      "avg_clinical_ratio": 0.6842,
+      "avg_relationships": 6.67,
+      "avg_clinical_density": 0.003,
+      "avg_semantic_density": 0.0444,
+      "avg_cross_density": 0.0285
+    },
+    "Wernicke's Aphasia": {
+      "episode_count": 1,
+      "meets_criteria_count": 1,
+      "avg_clinical_entities": 2.0,
+      "avg_semantic_entities": 5.0,
+      "avg_clinical_ratio": 0.2857,
+      "avg_relationships": 3.0,
+      "avg_clinical_density": 0.0,
+      "avg_semantic_density": 0.05,
+      "avg_cross_density": 0.1
+    }
+  }
+}

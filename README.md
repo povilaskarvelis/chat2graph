@@ -1,91 +1,201 @@
-# Chat2Graph
+# Chat2Graph 🧠➡️🕸️
 
-Extract clinical knowledge graphs from mental health conversations using LLMs.
+A tool for analyzing clinical conversations using knowledge graphs. Extracts clinical and semantic entities from mental health interviews to identify patterns that differentiate disorders.
 
-## Core Concept
+## Purpose
 
-**Problem:** Clinical interviews contain valuable diagnostic information buried in unstructured text.
+This project extracts structured knowledge graphs from clinical conversations to answer:
 
-**Solution:** Extract two types of entities and measure their ratio:
+**Can graph structure help identify mental health disorders?**
 
-| Entity Type | Examples |
-|-------------|----------|
-| **Clinical** | symptoms, DSM criteria, treatments, triggers |
-| **Semantic** | people, places, objects, topics |
+By extracting two types of entities:
+- **Clinical entities:** symptoms, DSM criteria, treatments, triggers
+- **Semantic entities:** people, places, objects, topics
 
-The **clinical ratio** (clinical entities / total entities) reveals whether speech contains clinical content — useful for distinguishing coherent symptom descriptions from incoherent speech patterns.
+We can compute metrics that differentiate disorders:
+
+| Disorder | Clinical Nodes | Semantic Nodes | Clinical Ratio |
+|----------|---------------|----------------|----------------|
+| GAD | 11.3 | 5.0 | **69.4%** |
+| ADHD | 8.7 | 4.0 | **68.4%** |
+| Wernicke's Aphasia | 2.0 | 5.0 | **28.6%** |
+
+**Key finding:** Wernicke's Aphasia shows low clinical ratio and zero internal density because the speech is incoherent and lacks symptom descriptions.
 
 ---
 
-## Setup
+## Quick Start
+
+```bash
+# 1. Make sure Neo4j and Ollama are running
+docker start neo4j
+ollama serve
+
+# 2. Activate environment
+source venv/bin/activate
+
+# 3. Extract entities from clinical interviews
+python extract_clinical.py all
+
+# 4. Analyze graph patterns by disorder
+python analyze_graphs.py
+
+# 5. Visualize in Neo4j Browser
+open http://localhost:7474
+# Run: MATCH (n)-[r]->(m) RETURN n, r, m
+```
+
+---
+
+## How It Works
+
+```
+STEP 1: Clinical interview transcript
+┌─────────────────────────────────────────────────────────────┐
+│  "I've been feeling anxious for about 6 months now.         │
+│   It started after I lost my job. I worry constantly..."    │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ▼
+STEP 2: LLM extracts clinical + semantic entities
+┌─────────────────────────────────────────────────────────────┐
+│  CLINICAL ENTITIES:                                         │
+│   • anxiety (symptom)                                       │
+│   • worry (symptom)                                         │
+│   • 6 months (criterion - duration)                         │
+│   • job loss (trigger)                                      │
+│                                                             │
+│  SEMANTIC ENTITIES:                                         │
+│   • Sarah (person)                                          │
+│   • Dr. Grande (person)                                     │
+│   • work (place)                                            │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ▼
+STEP 3: Store in Neo4j with entity type labels
+┌─────────────────────────────────────────────────────────────┐
+│  (:Episode {name: 'gad_sarah_001'})                         │
+│       │                                                     │
+│       ├──MENTIONS──>(:Clinical {name: 'anxiety'})           │
+│       ├──MENTIONS──>(:Clinical {name: 'worry'})             │
+│       ├──MENTIONS──>(:Semantic {name: 'Sarah'})             │
+│       └──MENTIONS──>(:Semantic {name: 'Dr. Grande'})        │
+│                                                             │
+│  (Sarah)──HAS_SYMPTOM──>(anxiety)                           │
+│  (job loss)──TRIGGERS──>(anxiety)                           │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+STEP 4: Analyze patterns by disorder
+┌─────────────────────────────────────────────────────────────┐
+│  Clinical Ratio = clinical / (clinical + semantic)          │
+│                                                             │
+│  GAD:        69.4%  (many symptoms described)               │
+│  ADHD:       68.4%  (many symptoms described)               │
+│  Wernicke's: 28.6%  (incoherent, few symptoms)              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Architecture
+
+| Component | Purpose | How to Run |
+|-----------|---------|------------|
+| **Ollama** | Local LLM for entity extraction | `ollama serve` |
+| **Neo4j** | Graph database for storage | `docker start neo4j` |
+| **extract_clinical.py** | Extract entities from transcripts | `python extract_clinical.py` |
+| **analyze_graphs.py** | Compare patterns by disorder | `python analyze_graphs.py` |
+
+### Entity Types
+
+**Clinical Entities** (mental health specific):
+- Symptoms: anxiety, worry, fatigue, sleep problems, attention issues
+- DSM Criteria: duration ("6 months"), frequency ("more days than not")
+- Treatments: medications, therapy types, coping strategies
+- Triggers: life events, stressors
+
+**Semantic Entities** (general concepts):
+- People: patient, clinician, family members
+- Places: school, work, home, clinic
+- Objects: physical items mentioned
+- Topics: abstract concepts discussed
+
+---
+
+## Setup Guide
 
 ### Prerequisites
 
-- Python 3.10+
-- Docker (for Neo4j)
-- Ollama (for local LLM)
+| Tool | Purpose | Install |
+|------|---------|---------|
+| **Python 3.10+** | Runtime | `python3 --version` |
+| **Docker** | Runs Neo4j | [Install Docker](https://docs.docker.com/get-docker/) |
+| **Ollama** | Local LLM | [Install Ollama](https://ollama.ai) |
 
-### Installation
+### Step 1: Clone and Setup
 
 ```bash
 git clone https://github.com/povilaskarvelis/chat2graph.git
 cd chat2graph
 
+# Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### Start Services
+### Step 2: Start Neo4j
 
 ```bash
-# Neo4j (graph database)
 docker run -d \
   --name neo4j \
-  -p 7474:7474 -p 7687:7687 \
+  -p 7474:7474 \
+  -p 7687:7687 \
   -e NEO4J_AUTH=neo4j/password123 \
   neo4j:latest
-
-# Ollama (local LLM)
-ollama serve
-ollama pull llama3.1:8b
 ```
 
-### Configure
-
-Create `.env`:
+### Step 3: Start Ollama
 
 ```bash
+ollama serve
+ollama pull llama3.1:8b  # Or llama3.2
+```
+
+### Step 4: Configure
+
+Create `.env` file:
+
+```bash
+# Ollama
 OLLAMA_MODEL=llama3.1:8b
+
+# Neo4j
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=password123
 ```
 
----
-
-## Usage
-
-### Extract Entities
+### Step 5: Run Extraction
 
 ```bash
-# List available conversations
-python extract_clinical.py
-
-# Extract from one conversation
-python extract_clinical.py gad_sarah_001
-
 # Extract from all conversations
 python extract_clinical.py all
+
+# Or extract one at a time
+python extract_clinical.py gad_sarah_001
 ```
 
-### Analyze Patterns
+### Step 6: Analyze
 
 ```bash
 python analyze_graphs.py
 ```
 
-### Visualize in Neo4j
+### Step 7: Visualize
 
 Open http://localhost:7474 and run:
 
@@ -95,146 +205,139 @@ MATCH (n)-[r]->(m) RETURN n, r, m
 
 ---
 
-## How It Works
+## Analysis Output
+
+Running `python analyze_graphs.py` produces:
 
 ```
-1. INPUT: Clinical interview transcript
-   ┌─────────────────────────────────────────────┐
-   │ "I've been feeling anxious for 6 months..." │
-   └──────────────────────┬──────────────────────┘
-                          │
-2. LLM EXTRACTION         ▼
-   ┌─────────────────────────────────────────────┐
-   │ Clinical: anxiety, worry, fatigue, 6 months │
-   │ Semantic: Sarah, Dr. Grande, school         │
-   │ Relationships: Sarah --HAS_SYMPTOM--> anxiety│
-   └──────────────────────┬──────────────────────┘
-                          │
-3. ENTITY RESOLUTION      ▼
-   ┌─────────────────────────────────────────────┐
-   │ Merge similar entities using embeddings     │
-   │ "anxiety" + "Anxiety" → "anxiety"           │
-   └──────────────────────┬──────────────────────┘
-                          │
-4. STORE IN NEO4J         ▼
-   ┌─────────────────────────────────────────────┐
-   │ (:Episode)-[:MENTIONS]->(:Clinical)         │
-   │ (:Episode)-[:MENTIONS]->(:Semantic)         │
-   └──────────────────────┬──────────────────────┘
-                          │
-5. ANALYZE                ▼
-   ┌─────────────────────────────────────────────┐
-   │ Clinical Ratio = clinical / total entities  │
-   │ Density metrics by entity type              │
-   └─────────────────────────────────────────────┘
+===========================================================================
+  CLINICAL KNOWLEDGE GRAPH ANALYSIS
+  Comparing Clinical vs Semantic Entities by Disorder
+===========================================================================
+
+NODE COUNTS:
+                        Clinical   Semantic   Clinical Ratio
+                        Nodes      Nodes      (higher = more clinical)
+  -------------------------------------------------------------
+  GAD                    11.3        5.0        69.4%
+  ADHD                    8.7        4.0        68.4%
+  Wernicke's Aphasia      2.0        5.0        28.6%
+
+DENSITY BY CONNECTION TYPE:
+                        Clinical   Semantic   Cross-type
+                        Density    Density    Density
+  -------------------------------------------------------------
+  GAD                   0.000      0.083        0.042
+  ADHD                  0.003      0.044        0.028
+  Wernicke's Aphasia    0.000      0.050        0.100
 ```
+
+**Interpretation:**
+- **High clinical ratio** = patient describing clear symptoms (GAD, ADHD)
+- **Low clinical ratio** = speech without clinical content (Wernicke's)
+- **Zero density** = disconnected entities (incoherent speech)
 
 ---
 
-## Example Results
+## Clinical Interview Data
 
-Using clinical interview transcripts from Dr. Todd Grande's educational videos (actors portraying scripted scenarios):
+The `empirical_conversations.py` file contains transcripts from Dr. Todd Grande's educational videos.
 
-| Disorder | Clinical Entities | Semantic Entities | Clinical Ratio |
-|----------|------------------|-------------------|----------------|
-| GAD | 11.3 | 4.7 | **70.8%** |
-| ADHD | 10.7 | 5.3 | **66.7%** |
-| Wernicke's Aphasia | 2.0 | 5.0 | **28.6%** |
+**Note:** The "patients" are actors portraying scripted scenarios — NOT real patients.
 
-**Key Finding:** Wernicke's Aphasia shows low clinical ratio because the incoherent speech lacks symptom descriptions. GAD and ADHD show high ratios because patients actively describe symptoms.
-
-### Example Entities by Disorder
-
-**GAD (coherent, symptom-focused):**
-- Clinical: anxiety, worry, fatigue, sleep problems, muscle tension
-- Semantic: school, family, education
-
-**Wernicke's Aphasia (incoherent, random topics):**
-- Clinical: anxiety, worry (only 2)
-- Semantic: golf, iPad, world (random, disconnected)
+| Conversation | Condition | Meets Criteria? |
+|--------------|-----------|-----------------|
+| `gad_sarah_001` | GAD | Yes |
+| `gad_sarah_002` | GAD (comorbidities) | Yes |
+| `gad_sarah_003` | GAD (subthreshold) | No |
+| `adhd_elise_001` | ADHD | No |
+| `adhd_elise_002` | ADHD Combined | Yes |
+| `adhd_elise_003` | ADHD | Yes |
+| `wernickes_aphasia_byron_001` | Wernicke's Aphasia | Yes |
 
 ---
 
 ## Project Files
 
-| File | Purpose |
-|------|---------|
-| `extract_clinical.py` | LLM extraction with entity resolution |
-| `analyze_graphs.py` | Compute metrics by disorder |
-| `empirical_conversations.py` | Example clinical transcripts |
-
----
-
-## Architecture
-
-| Component | Role |
-|-----------|------|
-| **Ollama** | Local LLM for entity extraction |
-| **Neo4j** | Graph storage |
-| **sentence-transformers** | Embeddings for entity resolution |
-
-### Entity Resolution
-
-Similar entities are merged using embedding similarity (threshold: 0.85):
-
-```
-Before: "anxiety", "Anxiety", "anxious"
-After:  "anxiety" (merged)
-```
+| File | Purpose | How to Run |
+|------|---------|------------|
+| `extract_clinical.py` | **Extract entities from transcripts** | `python extract_clinical.py all` |
+| `analyze_graphs.py` | **Compare graph patterns by disorder** | `python analyze_graphs.py` |
+| `chat.py` | Query the graph with natural language | `python chat.py` |
+| `empirical_conversations.py` | Clinical interview data | — |
+| `sample_conversations.py` | Synthetic sample data | — |
 
 ---
 
 ## Cypher Queries
 
+View full graph:
 ```cypher
--- View full graph
 MATCH (n)-[r]->(m) RETURN n, r, m
+```
 
--- View one conversation
+View one conversation:
+```cypher
 MATCH (e:Episode {name: 'gad_sarah_001'})-[:MENTIONS]->(n)
-RETURN e, n
+OPTIONAL MATCH (n)-[r]->(m)
+RETURN e, n, r, m
+```
 
--- Count by entity type
+View only clinical entities:
+```cypher
+MATCH (e:Episode)-[:MENTIONS]->(n:Clinical)
+RETURN e, n
+```
+
+Compare Wernicke's vs GAD:
+```cypher
+MATCH (e:Episode)-[:MENTIONS]->(n)
+WHERE e.name IN ['gad_sarah_001', 'wernickes_aphasia_byron_001']
+OPTIONAL MATCH (n)-[r]->(m)
+RETURN e, n, r, m
+```
+
+Count by entity type:
+```cypher
 MATCH (e:Episode)-[:MENTIONS]->(n)
 RETURN e.name, 
        sum(CASE WHEN n:Clinical THEN 1 ELSE 0 END) as clinical,
        sum(CASE WHEN n:Semantic THEN 1 ELSE 0 END) as semantic
-
--- Compare disorders
-MATCH (e:Episode)-[:MENTIONS]->(n)
-WHERE e.name IN ['gad_sarah_001', 'wernickes_aphasia_byron_001']
-RETURN e, n
 ```
 
 ---
 
 ## Troubleshooting
 
+### Neo4j won't connect
 ```bash
-# Neo4j not running
-docker start neo4j
+docker ps          # Check if running
+docker start neo4j # Start if stopped
+```
 
-# Clear database and re-extract
+### Ollama errors
+```bash
+ollama serve       # Make sure it's running
+ollama list        # Check available models
+```
+
+### Clear and re-extract
+```bash
+# Clear database
 python -c "
 from neo4j import GraphDatabase
 driver = GraphDatabase.driver('bolt://localhost:7687', auth=('neo4j', 'password123'))
 with driver.session() as s: s.run('MATCH (n) DETACH DELETE n')
 driver.close()
+print('Cleared!')
 "
+
+# Re-extract
 python extract_clinical.py all
 ```
 
 ---
 
-## Limitations
+## Disclaimer
 
-- Entity extraction depends on LLM quality (currently llama3.1:8b)
-- No validation against DSM criteria
-- Entity resolution is within-conversation only
-- Example dataset is small (n=7)
-
----
-
-## License
-
-Research and development tool. Example data from educational demonstrations with actors.
+This is a research and development tool. Clinical interview data is from educational demonstrations with actors, not real patients. Any clinical application would require appropriate validation, privacy safeguards, and regulatory compliance.

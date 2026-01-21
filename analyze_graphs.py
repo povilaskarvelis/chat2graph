@@ -15,6 +15,8 @@ The analysis compares:
 """
 
 import os
+import json
+from datetime import datetime
 from collections import defaultdict
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
@@ -455,6 +457,67 @@ INTERPRETATION:
 """)
 
 
+def export_to_json(overall, entities_per_ep, clinical_by_ep, semantic_by_ep, rels_by_ep, by_disorder):
+    """Export all analysis results to a JSON file in the results/ directory."""
+    
+    # Create results directory if it doesn't exist
+    results_dir = os.path.join(os.path.dirname(__file__), "results")
+    os.makedirs(results_dir, exist_ok=True)
+    
+    # Build export data
+    export_data = {
+        "exported_at": datetime.now().isoformat(),
+        "overall": overall,
+        "by_episode": {},
+        "by_disorder": {},
+    }
+    
+    # Per-episode data
+    for episode in entities_per_ep:
+        export_data["by_episode"][episode] = {
+            "metrics": entities_per_ep[episode],
+            "clinical_entities": [{"name": name, "type": etype} for name, etype in clinical_by_ep.get(episode, [])],
+            "semantic_entities": [{"name": name, "type": etype} for name, etype in semantic_by_ep.get(episode, [])],
+            "relationships": rels_by_ep.get(episode, []),
+            "disorder": CONVERSATION_DISORDERS.get(episode, (None, None))[0],
+            "meets_criteria": CONVERSATION_DISORDERS.get(episode, (None, None))[1],
+        }
+    
+    # Aggregated by disorder
+    for disorder, data in by_disorder.items():
+        avg_clinical = sum(data["clinical_counts"]) / len(data["clinical_counts"]) if data["clinical_counts"] else 0
+        avg_semantic = sum(data["semantic_counts"]) / len(data["semantic_counts"]) if data["semantic_counts"] else 0
+        avg_total = avg_clinical + avg_semantic
+        avg_ratio = avg_clinical / avg_total if avg_total > 0 else 0
+        
+        export_data["by_disorder"][disorder] = {
+            "episode_count": len(data["episodes"]),
+            "meets_criteria_count": sum(1 for m in data["meets_criteria"] if m),
+            "avg_clinical_entities": round(avg_clinical, 2),
+            "avg_semantic_entities": round(avg_semantic, 2),
+            "avg_clinical_ratio": round(avg_ratio, 4),
+            "avg_relationships": round(sum(data["relationship_counts"]) / len(data["relationship_counts"]), 2) if data["relationship_counts"] else 0,
+            "avg_clinical_density": round(sum(data["clinical_densities"]) / len(data["clinical_densities"]), 4) if data["clinical_densities"] else 0,
+            "avg_semantic_density": round(sum(data["semantic_densities"]) / len(data["semantic_densities"]), 4) if data["semantic_densities"] else 0,
+            "avg_cross_density": round(sum(data["cross_densities"]) / len(data["cross_densities"]), 4) if data["cross_densities"] else 0,
+        }
+    
+    # Save with timestamp
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    filename = f"analysis_{timestamp}.json"
+    filepath = os.path.join(results_dir, filename)
+    
+    with open(filepath, "w") as f:
+        json.dump(export_data, f, indent=2)
+    
+    # Also save as "latest" for easy access
+    latest_path = os.path.join(results_dir, "analysis_latest.json")
+    with open(latest_path, "w") as f:
+        json.dump(export_data, f, indent=2)
+    
+    return filepath
+
+
 def main():
     """Run the analysis."""
     print("\nConnecting to Neo4j...")
@@ -478,6 +541,14 @@ def main():
             return
         
         print_analysis(overall, entities_per_ep, clinical_by_ep, semantic_by_ep, rels_by_ep)
+        
+        # Export to JSON
+        by_disorder = analyze_by_disorder(entities_per_ep)
+        json_path = export_to_json(overall, entities_per_ep, clinical_by_ep, semantic_by_ep, rels_by_ep, by_disorder)
+        print(f"\n{'=' * 75}")
+        print(f"Results exported to: {json_path}")
+        print(f"Also saved as: results/analysis_latest.json")
+        print(f"{'=' * 75}")
         
     finally:
         driver.close()
