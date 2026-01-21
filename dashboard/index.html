@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat2Graph Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style type="text/css">
+        #graphNetwork {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            background: #fafbfc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠➡️🕸️ Chat2Graph Dashboard</h1>
+            <p class="subtitle">Clinical Knowledge Graph Analysis</p>
+        </header>
+
+        <div class="controls">
+            <select id="dataSource" class="select-input">
+                <option value="latest">Latest Analysis</option>
+                <option value="api">Live API (if available)</option>
+            </select>
+            <button id="refreshBtn" class="btn-primary">Refresh Data</button>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <!-- Error message -->
+        <div id="error" class="error hidden"></div>
+
+        <!-- Overall Statistics -->
+        <section class="section">
+            <h2>Overall Statistics</h2>
+            <div class="stats-grid" id="overallStats">
+                <!-- Populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section class="section">
+            <h2>Visualizations</h2>
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3>Clinical Ratio by Disorder</h3>
+                    <canvas id="clinicalRatioChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Entity Counts by Disorder</h3>
+                    <canvas id="entityCountsChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Density Metrics</h3>
+                    <canvas id="densityChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Relationships by Episode</h3>
+                    <canvas id="relationshipsChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- By Disorder Section -->
+        <section class="section">
+            <h2>Analysis by Disorder</h2>
+            <div id="disorderCards" class="disorder-cards">
+                <!-- Populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Graph Query Section -->
+        <section class="section">
+            <h2>Graph Query & Visualization</h2>
+            <div class="query-section">
+                <div class="query-help">
+                    <strong>Query Modes:</strong>
+                    <ul>
+                        <li><strong>Search Entities:</strong> Find entities by name (e.g., "anxiety", "Sarah")</li>
+                        <li><strong>Show Episode Graph:</strong> Display full graph for an episode (e.g., "gad_sarah_001")</li>
+                        <li><strong>Filter by Relationship:</strong> Show entities connected by relationship type (e.g., "HAS_SYMPTOM", "TREATS")</li>
+                        <li><strong>Filter by Disorder:</strong> Show all entities for a disorder (e.g., "GAD", "ADHD")</li>
+                    </ul>
+                </div>
+                <div class="query-controls">
+                    <input type="text" id="graphQuery" class="query-input" 
+                           placeholder="Enter your query here...">
+                    <button id="queryBtn" class="btn-primary">Query Graph</button>
+                    <button id="clearGraphBtn" class="btn-secondary">Clear</button>
+                    <select id="queryMode" class="select-input">
+                        <option value="search">Search Entities</option>
+                        <option value="episode">Show Episode Graph</option>
+                        <option value="relationship">Filter by Relationship</option>
+                        <option value="disorder">Filter by Disorder</option>
+                    </select>
+                </div>
+                <div id="graphInfo" class="graph-info"></div>
+                <div id="graphNetwork"></div>
+            </div>
+        </section>
+
+        <!-- Episodes Section -->
+        <section class="section">
+            <h2>Episodes</h2>
+            <div id="episodeTabs" class="tabs">
+                <!-- Populated by JavaScript -->
+            </div>
+            <div id="episodeContent" class="episode-content">
+                <!-- Populated by JavaScript -->
+            </div>
+        </section>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
+
