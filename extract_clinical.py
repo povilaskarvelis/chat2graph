@@ -199,6 +199,47 @@ def store_in_neo4j(driver, episode_name, diagnosis, meets_criteria, extraction_r
     return len(clinical_entities), len(semantic_entities), len(relationships)
 
 
+def process_uploaded_transcript(content, episode_name, disorder, meets_criteria):
+    """
+    Process an uploaded transcript - for use by the API server.
+
+    Args:
+        content: The transcript text content
+        episode_name: Name for the episode (e.g., 'gad_patient_001')
+        disorder: Disorder type (e.g., 'GAD', 'ADHD')
+        meets_criteria: Boolean - whether patient meets diagnostic criteria
+
+    Returns:
+        dict with extraction results or None on failure
+    """
+    # Extract entities using LLM
+    result = extract_entities_llm(content)
+
+    if result is None:
+        return None
+
+    # Store in Neo4j
+    driver = get_neo4j_driver()
+    clinical_count, semantic_count, rel_count = store_in_neo4j(
+        driver, episode_name, disorder, meets_criteria, result
+    )
+    driver.close()
+
+    return {
+        "episode_name": episode_name,
+        "disorder": disorder,
+        "meets_criteria": meets_criteria,
+        "clinical_entities": result.get("clinical_entities", []),
+        "semantic_entities": result.get("semantic_entities", []),
+        "relationships": result.get("relationships", []),
+        "counts": {
+            "clinical": clinical_count,
+            "semantic": semantic_count,
+            "relationships": rel_count
+        }
+    }
+
+
 def list_conversations():
     """List available conversations."""
     print("=" * 65)

@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     initializeGraph();
+    initializeUploadComponent();
     loadData();
 });
 
@@ -995,7 +996,382 @@ function showNodeDetails(node) {
         const epData = currentData.by_episode[ep];
         return `${ep} (${epData.disorder || 'Unknown'})`;
     }).join('\n');
-    
+
     alert(`Entity: ${node.label}\nType: ${node.type}\nGroup: ${node.group}\n\nAppears in:\n${episodeList}`);
+}
+
+// =====================================================
+// Upload Component Functions
+// =====================================================
+
+let currentJobId = null;
+let statusPollInterval = null;
+let selectedTranscriptFile = null;
+let selectedJsonFile = null;
+
+function initializeUploadComponent() {
+    // Tab switching
+    document.querySelectorAll('.upload-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.dataset.tab;
+
+            // Update active tab
+            document.querySelectorAll('.upload-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Update active content
+            document.querySelectorAll('.upload-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`${targetTab}-upload`).classList.add('active');
+        });
+    });
+
+    // Transcript drop zone
+    setupDropZone('transcriptDropZone', 'transcriptFile', 'transcriptFileName', '.txt', (file) => {
+        selectedTranscriptFile = file;
+    });
+
+    // JSON drop zone
+    setupDropZone('jsonDropZone', 'jsonFile', 'jsonFileName', '.json', (file) => {
+        selectedJsonFile = file;
+    });
+
+    // Form submissions
+    document.getElementById('transcriptForm').addEventListener('submit', handleTranscriptUpload);
+    document.getElementById('jsonForm').addEventListener('submit', handleJsonUpload);
+}
+
+function setupDropZone(dropZoneId, inputId, fileNameId, acceptType, onFileSelected) {
+    const dropZone = document.getElementById(dropZoneId);
+    const fileInput = document.getElementById(inputId);
+    const fileNameDisplay = document.getElementById(fileNameId);
+
+    if (!dropZone || !fileInput) return;
+
+    // Click to select file
+    dropZone.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // File input change
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleFileSelection(file, dropZone, fileNameDisplay, acceptType, onFileSelected);
+        }
+    });
+
+    // Drag and drop events
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            handleFileSelection(file, dropZone, fileNameDisplay, acceptType, onFileSelected);
+        }
+    });
+}
+
+function handleFileSelection(file, dropZone, fileNameDisplay, acceptType, onFileSelected) {
+    const extension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+
+    if (acceptType && extension !== acceptType) {
+        alert(`Please select a ${acceptType} file`);
+        return;
+    }
+
+    dropZone.classList.add('has-file');
+    fileNameDisplay.textContent = file.name;
+    onFileSelected(file);
+}
+
+async function handleTranscriptUpload(e) {
+    e.preventDefault();
+
+    const episodeName = document.getElementById('episodeName').value.trim();
+    const disorder = document.getElementById('disorderType').value;
+    const meetsCriteria = document.getElementById('meetsCriteria').checked;
+
+    // Validation
+    if (!episodeName) {
+        alert('Please enter an episode name');
+        return;
+    }
+
+    if (!disorder) {
+        alert('Please select a disorder type');
+        return;
+    }
+
+    if (!selectedTranscriptFile) {
+        alert('Please select a transcript file');
+        return;
+    }
+
+    // Check for duplicate episode name
+    if (currentData && currentData.by_episode && currentData.by_episode[episodeName]) {
+        const overwrite = confirm(`Episode "${episodeName}" already exists. Do you want to overwrite it?`);
+        if (!overwrite) {
+            return;
+        }
+    }
+
+    // Disable upload button
+    const uploadBtn = document.getElementById('uploadTranscriptBtn');
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Processing...';
+
+    // Show status section
+    showProcessingStatus();
+    resetStatusSteps();
+    updateStatusStep('queued', 'active');
+    updateStatusMessage('Uploading transcript...');
+
+    try {
+        // Create form data
+        const formData = new FormData();
+        formData.append('file', selectedTranscriptFile);
+        formData.append('episode_name', episodeName);
+        formData.append('disorder', disorder);
+        formData.append('meets_criteria', meetsCriteria.toString());
+
+        // Upload to API
+        const response = await fetch('/api/upload-transcript', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `Upload failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        currentJobId = result.job_id;
+
+        // Start polling for status
+        startStatusPolling();
+
+    } catch (error) {
+        console.error('Upload error:', error);
+        updateStatusStep('queued', 'error');
+        updateStatusMessage(`Error: ${error.message}`);
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Process Transcript';
+    }
+}
+
+async function handleJsonUpload(e) {
+    e.preventDefault();
+
+    if (!selectedJsonFile) {
+        alert('Please select a JSON file');
+        return;
+    }
+
+    const uploadBtn = document.getElementById('uploadJsonBtn');
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Importing...';
+
+    try {
+        // Validate JSON structure before upload
+        const fileContent = await readFileAsText(selectedJsonFile);
+        let jsonData;
+
+        try {
+            jsonData = JSON.parse(fileContent);
+        } catch (parseError) {
+            throw new Error('Invalid JSON format');
+        }
+
+        if (!jsonData.by_episode) {
+            throw new Error('Invalid JSON structure: missing "by_episode" field');
+        }
+
+        // Upload to API
+        const formData = new FormData();
+        formData.append('file', selectedJsonFile);
+
+        const response = await fetch('/api/upload-json', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `Upload failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        alert(`JSON imported successfully! Total episodes: ${result.episodes_count}`);
+
+        // Reload data
+        loadData();
+
+        // Reset form
+        selectedJsonFile = null;
+        document.getElementById('jsonFileName').textContent = '';
+        document.getElementById('jsonDropZone').classList.remove('has-file');
+
+    } catch (error) {
+        console.error('JSON upload error:', error);
+        alert(`Error: ${error.message}`);
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Import JSON Data';
+    }
+}
+
+function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(new Error('Failed to read file'));
+        reader.readAsText(file);
+    });
+}
+
+function showProcessingStatus() {
+    document.getElementById('processingStatus').classList.remove('hidden');
+}
+
+function hideProcessingStatus() {
+    document.getElementById('processingStatus').classList.add('hidden');
+}
+
+function resetStatusSteps() {
+    document.querySelectorAll('.status-step').forEach(step => {
+        step.classList.remove('active', 'complete', 'error');
+    });
+    document.getElementById('extractionResults').classList.add('hidden');
+}
+
+function updateStatusStep(stepName, state) {
+    const steps = ['queued', 'extracting', 'storing', 'analyzing', 'complete'];
+    const stepIndex = steps.indexOf(stepName);
+
+    document.querySelectorAll('.status-step').forEach((step, index) => {
+        const stepDataName = step.dataset.step;
+        const currentIndex = steps.indexOf(stepDataName);
+
+        step.classList.remove('active', 'complete', 'error');
+
+        if (state === 'error' && currentIndex === stepIndex) {
+            step.classList.add('error');
+        } else if (currentIndex < stepIndex) {
+            step.classList.add('complete');
+        } else if (currentIndex === stepIndex) {
+            step.classList.add(state === 'complete' ? 'complete' : 'active');
+        }
+    });
+}
+
+function updateStatusMessage(message) {
+    document.getElementById('statusMessage').textContent = message;
+}
+
+function updateExtractionResults(results) {
+    if (results) {
+        document.getElementById('clinicalCount').textContent = results.clinical_count || 0;
+        document.getElementById('semanticCount').textContent = results.semantic_count || 0;
+        document.getElementById('relationshipCount').textContent = results.relationship_count || 0;
+        document.getElementById('extractionResults').classList.remove('hidden');
+    }
+}
+
+function startStatusPolling() {
+    if (statusPollInterval) {
+        clearInterval(statusPollInterval);
+    }
+
+    statusPollInterval = setInterval(pollProcessingStatus, 1000);
+}
+
+function stopStatusPolling() {
+    if (statusPollInterval) {
+        clearInterval(statusPollInterval);
+        statusPollInterval = null;
+    }
+}
+
+async function pollProcessingStatus() {
+    if (!currentJobId) {
+        stopStatusPolling();
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/status/${currentJobId}`);
+
+        if (!response.ok) {
+            throw new Error('Failed to get status');
+        }
+
+        const status = await response.json();
+
+        // Update UI based on status
+        updateStatusStep(status.status, status.status === 'error' ? 'error' : 'active');
+        updateStatusMessage(status.step || status.status);
+
+        // Show extraction results if available
+        if (status.extraction_result) {
+            updateExtractionResults(status.extraction_result);
+        }
+
+        // Handle completion
+        if (status.status === 'complete') {
+            stopStatusPolling();
+            updateStatusStep('complete', 'complete');
+            updateStatusMessage('Processing complete! Reloading dashboard...');
+
+            // Reset form
+            document.getElementById('transcriptForm').reset();
+            selectedTranscriptFile = null;
+            document.getElementById('transcriptFileName').textContent = '';
+            document.getElementById('transcriptDropZone').classList.remove('has-file');
+
+            // Re-enable upload button
+            const uploadBtn = document.getElementById('uploadTranscriptBtn');
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Process Transcript';
+
+            // Reload data after a short delay
+            setTimeout(() => {
+                loadData();
+            }, 1500);
+        }
+
+        // Handle error
+        if (status.status === 'error') {
+            stopStatusPolling();
+            updateStatusMessage(`Error: ${status.error || 'Unknown error'}`);
+
+            // Re-enable upload button
+            const uploadBtn = document.getElementById('uploadTranscriptBtn');
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Process Transcript';
+        }
+
+    } catch (error) {
+        console.error('Status poll error:', error);
+        stopStatusPolling();
+        updateStatusMessage(`Error checking status: ${error.message}`);
+
+        // Re-enable upload button
+        const uploadBtn = document.getElementById('uploadTranscriptBtn');
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Process Transcript';
+    }
 }
 
