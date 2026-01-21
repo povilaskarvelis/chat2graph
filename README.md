@@ -29,6 +29,28 @@ You can then query: *"What support systems does this patient have?"* or *"What t
 
 ---
 
+## Quick Start (if already set up)
+
+```bash
+# 1. Make sure Neo4j and Ollama are running
+docker start neo4j
+ollama serve
+
+# 2. Activate environment
+source venv/bin/activate
+
+# 3. Load clinical interview data
+python load_empirical.py
+
+# 4. Analyze graph patterns by disorder
+python analyze_graphs.py
+
+# 5. Query the graph with natural language
+python chat.py
+```
+
+---
+
 ## Overview
 
 ### Key Components
@@ -177,12 +199,29 @@ NEO4J_PASSWORD=password123
 OPENAI_API_KEY=dummy
 ```
 
-### Step 6: Run the Demo
+### Step 6: Run It
 
 ```bash
 source venv/bin/activate
+```
+
+**Option A: Load empirical clinical interviews (recommended)**
+```bash
+python load_empirical.py
+```
+Loads 7 clinical interview transcripts covering GAD, ADHD, and Wernicke's Aphasia. Includes both threshold and subthreshold cases. Takes ~10-15 minutes with Ollama.
+
+**Option B: Load synthetic sample conversations**
+```bash
+python load_conversations.py
+```
+Loads 5 fictional mental health conversations (clinical intake, care coordination, therapy sessions, etc.).
+
+**Option C: Quick demo**
+```bash
 python main.py
 ```
+Runs a quick demo with a single conversation to verify everything works.
 
 ### Step 7: View the Knowledge Graph
 
@@ -277,9 +316,45 @@ The syntax mirrors graph patterns:
 
 ---
 
-## Sample Data
+## Clinical Interview Data
 
-The `sample_conversations.py` file contains synthetic mental health conversations:
+The `empirical_conversations.py` file contains transcripts from Dr. Todd Grande's educational demonstration videos. **Note:** The "patients" are actors portraying scripted scenarios - these are NOT real patients with actual diagnoses. The diagnostic determinations reflect what would apply if the presented symptoms were from a real patient.
+
+Three conditions are demonstrated:
+
+| Conversation | Condition Demonstrated | Portrayed as Meeting Criteria? |
+|--------------|------------------------|-------------------------------|
+| `gad_sarah_001` | Generalized Anxiety Disorder | Yes |
+| `gad_sarah_002` | GAD (with comorbidities) | Yes |
+| `gad_sarah_003` | GAD (subthreshold) | No |
+| `adhd_elise_001` | ADHD | No |
+| `adhd_elise_002` | ADHD Combined | Yes |
+| `adhd_elise_003` | ADHD (online student) | Yes |
+| `wernickes_aphasia_byron_001` | Wernicke's Aphasia | Yes |
+
+### Disorder Pattern Analysis
+
+The key research question: **Can knowledge graph structure help identify disorders?**
+
+Each disorder type should produce distinct graph signatures:
+
+| Disorder | Expected Graph Patterns |
+|----------|------------------------|
+| **GAD** | Many worry-related nodes, physical symptoms (fatigue, tension, sleep), temporal markers, interconnected concerns |
+| **ADHD** | Inattention + hyperactivity symptom clusters, multiple settings (school, work, home), childhood onset references |
+| **Wernicke's Aphasia** | Fragmented/incoherent entities, fewer logical connections, potentially nonsensical relationships |
+
+Run the analysis:
+```bash
+python load_empirical.py     # Load the clinical interviews
+python analyze_graphs.py     # Compare graph metrics by disorder
+```
+
+---
+
+## Synthetic Sample Data
+
+The `sample_conversations.py` file contains fictional mental health conversations for testing:
 
 | Conversation | Type |
 |--------------|------|
@@ -289,20 +364,22 @@ The `sample_conversations.py` file contains synthetic mental health conversation
 | `support_group_session` | Facilitated group discussion |
 | `treatment_planning_review` | Quarterly progress review |
 
-**Note:** All sample data is entirely fictional and created for testing purposes.
+**Note:** All synthetic data is entirely fictional and created for testing purposes.
 
 ---
 
 ## Project Files
 
-| File | Purpose |
-|------|---------|
-| `main.py` | Demo script with sample conversation |
-| `sample_conversations.py` | Synthetic mental health conversations |
-| `api_server.py` | REST API for programmatic access |
-| `chat.py` | Natural language chat interface |
-| `quick_test.py` | Fast single-conversation test |
-| `load_conversations.py` | Bulk conversation loader |
+| File | Purpose | How to Run |
+|------|---------|------------|
+| `load_empirical.py` | **Load clinical interview transcripts** | `python load_empirical.py` |
+| `analyze_graphs.py` | **Compare graph patterns by disorder** | `python analyze_graphs.py` |
+| `chat.py` | Query the graph with natural language | `python chat.py` |
+| `load_conversations.py` | Load synthetic sample data | `python load_conversations.py` |
+| `main.py` | Quick demo with simple conversation | `python main.py` |
+| `api_server.py` | REST API for programmatic access | `python api_server.py` |
+| `empirical_conversations.py` | Clinical interview data (GAD, ADHD, Aphasia) | — |
+| `sample_conversations.py` | Synthetic sample data | — |
 
 ---
 
@@ -418,6 +495,8 @@ MATCH (n)-[r]->(m) RETURN n, r, m
 
 This infrastructure can support:
 
+- [x] Graph-based disorder pattern analysis
+- [ ] Machine learning on graph features for diagnosis support
 - [ ] Symptom trajectory visualization
 - [ ] Treatment outcome analysis
 - [ ] Care team network mapping

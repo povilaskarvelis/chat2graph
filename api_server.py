@@ -48,6 +48,10 @@ class QueryInput(BaseModel):
     query: str
     num_results: Optional[int] = 5
 
+class CypherInput(BaseModel):
+    """Input for executing a Cypher query."""
+    cypher: str
+
 class ConversationResponse(BaseModel):
     """Response after adding a conversation."""
     success: bool
@@ -207,6 +211,88 @@ async def query_graph(input: QueryInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/cypher")
+async def execute_cypher(input: CypherInput):
+    """
+    Execute a raw Cypher query against the knowledge graph.
+    
+    Example:
+    ```json
+    {
+        "cypher": "MATCH (n:Entity) RETURN n.name LIMIT 10"
+    }
+    ```
+    """
+    from neo4j import GraphDatabase
+    
+    try:
+        driver = GraphDatabase.driver(
+            os.getenv("NEO4J_URI", "bolt://localhost:7687"),
+            auth=(os.getenv("NEO4J_USER", "neo4j"), os.getenv("NEO4J_PASSWORD", "password123"))
+        )
+        
+        with driver.session() as session:
+            result = session.run(input.cypher)
+            records = []
+            for record in result:
+                # Convert record to dict, handling Neo4j node/relationship types
+                record_dict = {}
+                for key in record.keys():
+                    value = record[key]
+                    # Convert Neo4j nodes to dicts
+                    if hasattr(value, 'items'):  # Node-like
+                        record_dict[key] = dict(value.items()) if hasattr(value, 'items') else str(value)
+                    elif hasattr(value, '_properties'):  # Node or Relationship
+                        record_dict[key] = dict(value._properties)
+                    else:
+                        record_dict[key] = value
+                records.append(record_dict)
+        
+        driver.close()
+        
+        return {
+            "cypher": input.cypher,
+            "results": records,
+            "count": len(records)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Cypher error: {str(e)}")
+
+@app.get("/schema")
+async def get_schema():
+    """
+    Get the knowledge graph schema (node labels, relationship types, properties).
+    Useful for generating Cypher queries.
+    """
+    from neo4j import GraphDatabase
+    
+    driver = GraphDatabase.driver(
+        os.getenv("NEO4J_URI", "bolt://localhost:7687"),
+        auth=(os.getenv("NEO4J_USER", "neo4j"), os.getenv("NEO4J_PASSWORD", "password123"))
+    )
+    
+    schema = {"node_labels": [], "relationship_types": [], "sample_properties": {}}
+    
+    with driver.session() as session:
+        # Get node labels
+        labels = session.run("CALL db.labels()").values()
+        schema["node_labels"] = [label[0] for label in labels]
+        
+        # Get relationship types
+        rel_types = session.run("CALL db.relationshipTypes()").values()
+        schema["relationship_types"] = [rel[0] for rel in rel_types]
+        
+        # Get sample properties for Entity nodes
+        try:
+            sample = session.run("MATCH (n:Entity) RETURN keys(n) as props LIMIT 1").single()
+            if sample:
+                schema["sample_properties"]["Entity"] = sample["props"]
+        except:
+            pass
+    
+    driver.close()
+    return schema
+
 @app.get("/stats")
 async def get_stats():
     """Get statistics about the knowledge graph."""
@@ -226,13 +312,155 @@ async def get_stats():
         
         # Count episodes
         episode_count = session.run("MATCH (n:Episodic) RETURN count(n) as count").single()["count"]
+        
+        # Count relationship types (including reclassified ones)
+        rel_types = session.run("MATCH ()-[r]->() RETURN type(r) as type, count(r) as count").values()
     
     driver.close()
     
     return {
         "entities": entity_count,
         "relationships": rel_count,
-        "episodes": episode_count
+        "episodes": episode_count,
+        "relationship_types": {r[0]: r[1] for r in rel_types}
+    }
+
+
+@app.post("/reclassify")
+async def reclassify_relationships():
+    """
+    Reclassify RELATES_TO edges into specific relationship types using Ollama.
+    
+    This creates new typed edges (TREATS, PRESCRIBED, SUPPORTS, etc.) while
+    preserving the original RELATES_TO edges.
+    
+    Note: This operation can take several minutes depending on the number of
+    relationships and Ollama's response time.
+    """
+    import requests
+    from neo4j import GraphDatabase
+    from collections import Counter
+    
+    OLLAMA_URL = "http://localhost:11434/api/generate"
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+    
+    RELATIONSHIP_TYPES = [
+        "TREATS", "PRESCRIBED", "TAKES", "REFERRED", "SUPPORTS",
+        "FAMILY_OF", "WORKS_AT", "DIAGNOSED_WITH", "TRIGGERS", "UNCERTAIN"
+    ]
+    
+    CLASSIFICATION_PROMPT = """You are classifying relationships in a mental health knowledge graph.
+
+Given a relationship between two entities, classify it into ONE of these types:
+- TREATS: Healthcare provider treats a patient
+- PRESCRIBED: Healthcare provider prescribed a medication
+- TAKES: Patient takes a medication
+- REFERRED: Provider referred patient to another provider
+- SUPPORTS: Person emotionally supports another person
+- FAMILY_OF: Family relationship (parent, sibling, child, spouse)
+- WORKS_AT: Person works at an organization
+- DIAGNOSED_WITH: Patient has been diagnosed with a condition
+- TRIGGERS: An event or situation triggers a mental health symptom
+- UNCERTAIN: The relationship doesn't clearly fit any category
+
+Respond with ONLY the relationship type, nothing else.
+
+FROM: {from_name}
+FROM DESCRIPTION: {from_summary}
+
+TO: {to_name}  
+TO DESCRIPTION: {to_summary}
+
+CONTEXT: {fact}
+
+RELATIONSHIP TYPE:"""
+
+    driver = GraphDatabase.driver(
+        os.getenv("NEO4J_URI", "bolt://localhost:7687"),
+        auth=(os.getenv("NEO4J_USER", "neo4j"), os.getenv("NEO4J_PASSWORD", "password123"))
+    )
+    
+    # Get all RELATES_TO edges
+    query = """
+    MATCH (a:Entity)-[r:RELATES_TO]->(b:Entity)
+    RETURN 
+        elementId(r) as rel_id,
+        elementId(a) as from_id,
+        a.name as from_name, 
+        a.summary as from_summary,
+        elementId(b) as to_id,
+        b.name as to_name, 
+        b.summary as to_summary,
+        r.fact as fact
+    """
+    
+    with driver.session() as session:
+        result = session.run(query)
+        edges = [dict(record) for record in result]
+    
+    if len(edges) == 0:
+        driver.close()
+        return {"message": "No RELATES_TO edges found", "processed": 0}
+    
+    stats = Counter()
+    created = 0
+    
+    for edge in edges:
+        # Classify using Ollama
+        prompt = CLASSIFICATION_PROMPT.format(
+            from_name=edge["from_name"] or "Unknown",
+            from_summary=edge["from_summary"] or "",
+            to_name=edge["to_name"] or "Unknown",
+            to_summary=edge["to_summary"] or "",
+            fact=edge["fact"] or ""
+        )
+        
+        try:
+            response = requests.post(
+                OLLAMA_URL,
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.1, "num_predict": 20}
+                },
+                timeout=60
+            )
+            
+            rel_type = "UNCERTAIN"
+            if response.status_code == 200:
+                classification = response.json().get("response", "").strip().upper()
+                for rt in RELATIONSHIP_TYPES:
+                    if rt in classification:
+                        rel_type = rt
+                        break
+        except:
+            rel_type = "UNCERTAIN"
+        
+        stats[rel_type] += 1
+        
+        # Create typed edge (skip UNCERTAIN)
+        if rel_type != "UNCERTAIN":
+            create_query = f"""
+            MATCH (a:Entity), (b:Entity)
+            WHERE elementId(a) = $from_id AND elementId(b) = $to_id
+            CREATE (a)-[r:{rel_type} {{fact: $fact, source: 'reclassified'}}]->(b)
+            """
+            with driver.session() as session:
+                session.run(create_query, 
+                           from_id=edge["from_id"], 
+                           to_id=edge["to_id"], 
+                           fact=edge["fact"] or "")
+            created += 1
+    
+    driver.close()
+    
+    return {
+        "message": "Reclassification complete",
+        "processed": len(edges),
+        "new_edges_created": created,
+        "kept_as_relates_to": stats["UNCERTAIN"],
+        "classification_breakdown": dict(stats)
     }
 
 # ============================================
@@ -246,7 +474,10 @@ if __name__ == "__main__":
 ╠══════════════════════════════════════════════════════════╣
 ║  Endpoints:                                              ║
 ║    POST /add_conversation  - Add conversation to graph   ║
-║    POST /query            - Query the knowledge graph    ║
+║    POST /query            - Semantic search (NL)         ║
+║    POST /cypher           - Execute Cypher query         ║
+║    POST /reclassify       - Reclassify relationships     ║
+║    GET  /schema           - Get graph schema             ║
 ║    GET  /stats            - Get graph statistics         ║
 ║                                                          ║
 ║  n8n Webhook URL: http://localhost:8080/add_conversation ║
