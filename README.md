@@ -201,10 +201,6 @@ The `empirical_conversations.py` file contains transcripts from Dr. Todd Grande'
 
 **Note:** The "patients" are actors portraying scripted scenarios — NOT real patients.
 
-[![GAD Interview Example](https://img.youtube.com/vi/HIgQKH3Y1VE/0.jpg)](https://www.youtube.com/watch?v=HIgQKH3Y1VE)
-
-*Click to watch: GAD clinical interview example (Sarah)*
-
 | Conversation | Condition | Meets Criteria? |
 |--------------|-----------|-----------------|
 | `gad_sarah_001` | GAD | Yes |
@@ -214,6 +210,10 @@ The `empirical_conversations.py` file contains transcripts from Dr. Todd Grande'
 | `adhd_elise_002` | ADHD Combined | Yes |
 | `adhd_elise_003` | ADHD | Yes |
 | `wernickes_aphasia_byron_001` | Wernicke's Aphasia | Yes |
+
+**Source video for `gad_sarah_001`:**
+
+[![GAD Interview - gad_sarah_001](https://img.youtube.com/vi/HIgQKH3Y1VE/0.jpg)](https://www.youtube.com/watch?v=HIgQKH3Y1VE)
 
 ---
 
@@ -237,7 +237,7 @@ Running `python analyze_graphs.py` on the example dataset produces:
 
 ![Full graph visualization](Full_graph_example.png)
 
-**Single conversation (GAD - Sarah):**
+**Graph for `gad_sarah_001`** (from video above):
 
 ![Single conversation graph](Sarah_graph_example.png)
 
