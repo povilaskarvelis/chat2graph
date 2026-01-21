@@ -235,11 +235,11 @@ Running `python analyze_graphs.py` on the example dataset produces:
 
 **Full graph (all conversations):**
 
-![Full graph visualization](Full_graph_example.png)
+![Full graph visualization](images/Full_graph_example.png)
 
 **Graph for `gad_sarah_001`** (from video above):
 
-![Single conversation graph](Sarah_graph_example.png)
+![Single conversation graph](images/Sarah_graph_example.png)
 
 *Episode nodes (blue) link to Clinical entities (red: symptoms, criteria, treatments) and Semantic entities (beige: people, places, topics).*
 
@@ -253,9 +253,8 @@ Results are also exported to `results/analysis_latest.json`.
 |------|---------|------------|
 | `extract_clinical.py` | **Extract entities from transcripts** | `python extract_clinical.py all` |
 | `analyze_graphs.py` | **Compare graph patterns by disorder** | `python analyze_graphs.py` |
-| `chat.py` | Query the graph with natural language | `python chat.py` |
 | `empirical_conversations.py` | Clinical interview data | — |
-| `sample_conversations.py` | Synthetic sample data | — |
+| `load_empirical.py` | Alternative loader using Graphiti | `python load_empirical.py` |
 
 ---
 
