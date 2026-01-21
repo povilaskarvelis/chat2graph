@@ -201,6 +201,10 @@ The `empirical_conversations.py` file contains transcripts from Dr. Todd Grande'
 
 **Note:** The "patients" are actors portraying scripted scenarios — NOT real patients.
 
+[![GAD Interview Example](https://img.youtube.com/vi/HIgQKH3Y1VE/0.jpg)](https://www.youtube.com/watch?v=HIgQKH3Y1VE)
+
+*Click to watch: GAD clinical interview example (Sarah)*
+
 | Conversation | Condition | Meets Criteria? |
 |--------------|-----------|-----------------|
 | `gad_sarah_001` | GAD | Yes |
