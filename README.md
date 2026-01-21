@@ -227,6 +227,18 @@ Running `python analyze_graphs.py` on the example dataset produces:
 - **High clinical ratio** (~69%) = patient describing clear symptoms (GAD, ADHD)
 - **Low clinical ratio** (~29%) = speech without clinical content (Wernicke's)
 
+### Graph Visualization
+
+**Full graph (all conversations):**
+
+![Full graph visualization](Full_graph_example.png)
+
+**Single conversation (GAD - Sarah):**
+
+![Single conversation graph](Sarah_graph_example.png)
+
+*Episode nodes (blue) link to Clinical entities (red: symptoms, criteria, treatments) and Semantic entities (beige: people, places, topics).*
+
 Results are also exported to `results/analysis_latest.json`.
 
 ---
