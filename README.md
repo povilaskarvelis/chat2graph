@@ -12,15 +12,9 @@ By extracting two types of entities:
 - **Clinical entities:** symptoms, DSM criteria, treatments, triggers
 - **Semantic entities:** people, places, objects, topics
 
-We can compute metrics that differentiate disorders:
+We can compute the **clinical ratio** (clinical / total entities) which reveals whether speech contains clinical content.
 
-| Disorder | Clinical Nodes | Semantic Nodes | Clinical Ratio |
-|----------|---------------|----------------|----------------|
-| GAD | 11.3 | 5.0 | **69.4%** |
-| ADHD | 8.7 | 4.0 | **68.4%** |
-| Wernicke's Aphasia | 2.0 | 5.0 | **28.6%** |
-
-**Key finding:** Wernicke's Aphasia shows low clinical ratio and zero internal density because the speech is incoherent and lacks symptom descriptions.
+**Key finding:** Wernicke's Aphasia shows low clinical ratio (~29%) because the incoherent speech lacks symptom descriptions, while GAD and ADHD show high ratios (~69%) because patients actively describe symptoms.
 
 ---
 
@@ -83,16 +77,12 @@ STEP 3: Store in Neo4j with entity type labels
 │                                                             │
 │  (Sarah)──HAS_SYMPTOM──>(anxiety)                           │
 │  (job loss)──TRIGGERS──>(anxiety)                           │
-└─────────────────────────────────────────────────────────────┘
+└─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
-STEP 4: Analyze patterns by disorder
+STEP 4: Compute clinical ratio per disorder
 ┌─────────────────────────────────────────────────────────────┐
 │  Clinical Ratio = clinical / (clinical + semantic)          │
-│                                                             │
-│  GAD:        69.4%  (many symptoms described)               │
-│  ADHD:       68.4%  (many symptoms described)               │
-│  Wernicke's: 28.6%  (incoherent, few symptoms)              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -205,41 +195,7 @@ MATCH (n)-[r]->(m) RETURN n, r, m
 
 ---
 
-## Analysis Output
-
-Running `python analyze_graphs.py` produces:
-
-```
-===========================================================================
-  CLINICAL KNOWLEDGE GRAPH ANALYSIS
-  Comparing Clinical vs Semantic Entities by Disorder
-===========================================================================
-
-NODE COUNTS:
-                        Clinical   Semantic   Clinical Ratio
-                        Nodes      Nodes      (higher = more clinical)
-  -------------------------------------------------------------
-  GAD                    11.3        5.0        69.4%
-  ADHD                    8.7        4.0        68.4%
-  Wernicke's Aphasia      2.0        5.0        28.6%
-
-DENSITY BY CONNECTION TYPE:
-                        Clinical   Semantic   Cross-type
-                        Density    Density    Density
-  -------------------------------------------------------------
-  GAD                   0.000      0.083        0.042
-  ADHD                  0.003      0.044        0.028
-  Wernicke's Aphasia    0.000      0.050        0.100
-```
-
-**Interpretation:**
-- **High clinical ratio** = patient describing clear symptoms (GAD, ADHD)
-- **Low clinical ratio** = speech without clinical content (Wernicke's)
-- **Zero density** = disconnected entities (incoherent speech)
-
----
-
-## Clinical Interview Data
+## Example Dataset
 
 The `empirical_conversations.py` file contains transcripts from Dr. Todd Grande's educational videos.
 
@@ -254,6 +210,24 @@ The `empirical_conversations.py` file contains transcripts from Dr. Todd Grande'
 | `adhd_elise_002` | ADHD Combined | Yes |
 | `adhd_elise_003` | ADHD | Yes |
 | `wernickes_aphasia_byron_001` | Wernicke's Aphasia | Yes |
+
+---
+
+## Example Results
+
+Running `python analyze_graphs.py` on the example dataset produces:
+
+| Disorder | Clinical Nodes | Semantic Nodes | Clinical Ratio |
+|----------|---------------|----------------|----------------|
+| GAD | 11.3 | 5.0 | **69.4%** |
+| ADHD | 8.7 | 4.0 | **68.4%** |
+| Wernicke's Aphasia | 2.0 | 5.0 | **28.6%** |
+
+**Interpretation:**
+- **High clinical ratio** (~69%) = patient describing clear symptoms (GAD, ADHD)
+- **Low clinical ratio** (~29%) = speech without clinical content (Wernicke's)
+
+Results are also exported to `results/analysis_latest.json`.
 
 ---
 
