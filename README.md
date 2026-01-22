@@ -1,20 +1,17 @@
 # Chat2Graph 🧠➡️🕸️
 
-A tool for analyzing clinical conversations using knowledge graphs. Extracts clinical and semantic entities from mental health interviews to identify patterns that differentiate disorders.
+A tool for analyzing clinical conversations using knowledge graphs. Extracts entities and relationships from mental health interviews, enabling structured analysis of unstructured dialogue.
 
 ## Purpose
 
-This project extracts structured knowledge graphs from clinical conversations to answer:
+Clinical interviews contain rich information — symptoms, history, relationships, context — but it's trapped in unstructured text. This project extracts that information into knowledge graphs that can be:
 
-**Can graph structure help identify mental health disorders?**
+- **Queried** to find patterns across patients or sessions
+- **Visualized** to see connections between symptoms, triggers, and treatments
+- **Analyzed** to identify structural differences in conversation content
+- **Compared** across conditions, time points, or clinicians
 
-By extracting two types of entities:
-- **Clinical entities:** symptoms, DSM criteria, treatments, triggers
-- **Semantic entities:** people, places, objects, topics
-
-We can compute the **clinical ratio** (clinical / total entities) which reveals whether speech contains clinical content.
-
-**Key finding:** Wernicke's Aphasia shows low clinical ratio (~29%) because the incoherent speech lacks symptom descriptions, while GAD and ADHD show high ratios (~69%) because patients actively describe symptoms.
+The goal is to make clinical conversation data more accessible for research and analysis.
 
 ---
 
@@ -80,9 +77,11 @@ STEP 3: Store in Neo4j with entity type labels
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
-STEP 4: Compute clinical ratio per disorder
+STEP 4: Query, visualize, and analyze
 ┌─────────────────────────────────────────────────────────────┐
-│  Clinical Ratio = clinical / (clinical + semantic)          │
+│  • Visualize in Neo4j Browser                               │
+│  • Query patterns across episodes                           │
+│  • Export metrics for analysis                              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
