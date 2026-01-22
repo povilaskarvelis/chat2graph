@@ -23,7 +23,7 @@ import subprocess
 import traceback
 from urllib.parse import urlparse, parse_qs
 from io import BytesIO
-import cgi
+import re
 
 # Add parent directory to path for imports
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,6 +33,62 @@ PORT = 8000
 
 # Job status tracking
 jobs = {}
+
+
+def parse_multipart(content_type, body):
+    """Parse multipart form data without the deprecated cgi module."""
+    # Extract boundary from content type
+    boundary_match = re.search(r'boundary=([^\s;]+)', content_type)
+    if not boundary_match:
+        raise ValueError("No boundary found in Content-Type")
+    
+    boundary = boundary_match.group(1).encode()
+    if boundary.startswith(b'"') and boundary.endswith(b'"'):
+        boundary = boundary[1:-1]
+    
+    # Split by boundary
+    parts = body.split(b'--' + boundary)
+    
+    result = {}
+    
+    for part in parts:
+        if not part or part == b'--\r\n' or part == b'--':
+            continue
+        
+        # Remove leading/trailing CRLF
+        part = part.strip(b'\r\n')
+        if not part:
+            continue
+        
+        # Split headers from content
+        if b'\r\n\r\n' in part:
+            headers_section, content = part.split(b'\r\n\r\n', 1)
+        else:
+            continue
+        
+        # Parse Content-Disposition header
+        headers_text = headers_section.decode('utf-8', errors='ignore')
+        
+        name_match = re.search(r'name="([^"]+)"', headers_text)
+        if not name_match:
+            continue
+        
+        field_name = name_match.group(1)
+        
+        # Check if it's a file
+        filename_match = re.search(r'filename="([^"]*)"', headers_text)
+        
+        if filename_match:
+            # File field
+            result[field_name] = {
+                'filename': filename_match.group(1),
+                'content': content.rstrip(b'\r\n')
+            }
+        else:
+            # Regular field
+            result[field_name] = content.rstrip(b'\r\n').decode('utf-8')
+    
+    return result
 
 
 def check_ollama_available():
@@ -245,25 +301,23 @@ class APIRequestHandler(http.server.SimpleHTTPRequestHandler):
             content_type = self.headers.get('Content-Type', '')
 
             if 'multipart/form-data' in content_type:
+                # Read body
+                content_length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_length)
+                
                 # Parse multipart form
-                form = cgi.FieldStorage(
-                    fp=self.rfile,
-                    headers=self.headers,
-                    environ={
-                        'REQUEST_METHOD': 'POST',
-                        'CONTENT_TYPE': content_type
-                    }
-                )
+                form = parse_multipart(content_type, body)
 
                 # Extract form fields
-                episode_name = form.getvalue('episode_name', '')
-                disorder = form.getvalue('disorder', '')
-                meets_criteria = form.getvalue('meets_criteria', 'false').lower() == 'true'
+                episode_name = form.get('episode_name', '')
+                disorder = form.get('disorder', '')
+                meets_criteria_val = form.get('meets_criteria', 'false')
+                meets_criteria = str(meets_criteria_val).lower() == 'true'
 
                 # Get file content
-                file_item = form['file']
-                if file_item.file:
-                    content = file_item.file.read().decode('utf-8')
+                file_data = form.get('file')
+                if file_data and isinstance(file_data, dict) and 'content' in file_data:
+                    content = file_data['content'].decode('utf-8')
                 else:
                     raise ValueError("No file uploaded")
             else:
@@ -330,20 +384,17 @@ class APIRequestHandler(http.server.SimpleHTTPRequestHandler):
             content_type = self.headers.get('Content-Type', '')
 
             if 'multipart/form-data' in content_type:
+                # Read body
+                content_length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_length)
+                
                 # Parse multipart form
-                form = cgi.FieldStorage(
-                    fp=self.rfile,
-                    headers=self.headers,
-                    environ={
-                        'REQUEST_METHOD': 'POST',
-                        'CONTENT_TYPE': content_type
-                    }
-                )
+                form = parse_multipart(content_type, body)
 
                 # Get file content
-                file_item = form['file']
-                if file_item.file:
-                    content = file_item.file.read().decode('utf-8')
+                file_data = form.get('file')
+                if file_data and isinstance(file_data, dict) and 'content' in file_data:
+                    content = file_data['content'].decode('utf-8')
                     data = json.loads(content)
                 else:
                     raise ValueError("No file uploaded")
