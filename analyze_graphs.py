@@ -28,7 +28,8 @@ NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password123")
 
-# Map conversation names to disorder categories
+# Static map for known conversation names to disorder categories
+# New episodes uploaded via API will have their disorder stored in Neo4j
 CONVERSATION_DISORDERS = {
     "gad_sarah_001": ("GAD", True),
     "gad_sarah_002": ("GAD", True),
@@ -38,6 +39,32 @@ CONVERSATION_DISORDERS = {
     "adhd_elise_003": ("ADHD", True),
     "wernickes_aphasia_byron_001": ("Wernicke's Aphasia", True),
 }
+
+
+def get_all_episode_disorders(driver):
+    """
+    Get disorder info for all episodes from Neo4j.
+    Merges static CONVERSATION_DISORDERS with data from Neo4j.
+    """
+    disorders = dict(CONVERSATION_DISORDERS)
+
+    with driver.session() as session:
+        result = session.run("""
+            MATCH (e:Episode)
+            RETURN e.name as name, e.diagnosis as diagnosis, e.meets_criteria as meets_criteria
+        """)
+        for record in result:
+            name = record["name"]
+            diagnosis = record["diagnosis"]
+            meets = record["meets_criteria"]
+
+            # Update or add episode disorder info
+            if diagnosis:
+                disorders[name] = (diagnosis, meets if meets is not None else False)
+            elif name not in disorders:
+                disorders[name] = ("Unknown", False)
+
+    return disorders
 
 
 def get_driver():
@@ -237,7 +264,7 @@ def get_relationships_by_episode(driver):
     return results
 
 
-def analyze_by_disorder(entities_per_ep):
+def analyze_by_disorder(entities_per_ep, episode_disorders=None):
     """Aggregate metrics by disorder type."""
     by_disorder = defaultdict(lambda: {
         "episodes": [],
@@ -251,17 +278,22 @@ def analyze_by_disorder(entities_per_ep):
         "overall_densities": [],
         "meets_criteria": []
     })
-    
+
     default_ep = {
         "clinical": 0, "semantic": 0, "total": 0, "relationships": 0,
         "clinical_density": 0, "semantic_density": 0, "cross_density": 0, "overall_density": 0
     }
-    
-    for episode, disorder_info in CONVERSATION_DISORDERS.items():
+
+    # Use provided episode_disorders or fall back to static CONVERSATION_DISORDERS
+    disorders_map = episode_disorders if episode_disorders else CONVERSATION_DISORDERS
+
+    # Process all episodes that have data
+    for episode in entities_per_ep.keys():
+        disorder_info = disorders_map.get(episode, ("Unknown", False))
         disorder, meets = disorder_info
-        
+
         ep_data = entities_per_ep.get(episode, default_ep)
-        
+
         by_disorder[disorder]["episodes"].append(episode)
         by_disorder[disorder]["clinical_counts"].append(ep_data["clinical"])
         by_disorder[disorder]["semantic_counts"].append(ep_data["semantic"])
@@ -272,18 +304,21 @@ def analyze_by_disorder(entities_per_ep):
         by_disorder[disorder]["cross_densities"].append(ep_data.get("cross_density", 0))
         by_disorder[disorder]["overall_densities"].append(ep_data.get("overall_density", 0))
         by_disorder[disorder]["meets_criteria"].append(meets)
-    
+
     return dict(by_disorder)
 
 
-def print_analysis(overall, entities_per_ep, clinical_by_ep, semantic_by_ep, rels_by_ep):
+def print_analysis(overall, entities_per_ep, clinical_by_ep, semantic_by_ep, rels_by_ep, episode_disorders=None):
     """Print the analysis results."""
-    
+
+    # Use provided episode_disorders or fall back to static CONVERSATION_DISORDERS
+    disorders_map = episode_disorders if episode_disorders else CONVERSATION_DISORDERS
+
     print("=" * 75)
     print("  CLINICAL KNOWLEDGE GRAPH ANALYSIS")
     print("  Comparing Clinical vs Semantic Entities by Disorder")
     print("=" * 75)
-    
+
     # Overall stats
     clinical_ratio = overall['clinical_entities'] / overall['total_entities'] if overall['total_entities'] > 0 else 0
     print(f"""
@@ -294,33 +329,33 @@ OVERALL STATISTICS:
   Total Relationships: {overall['total_relationships']}
   Episodes: {overall['episodes']}
 """)
-    
+
     # Per-episode table
     print("-" * 75)
     print("PER-CONVERSATION METRICS:")
     print("-" * 75)
     print(f"{'Conversation':<32} {'Disorder':<10} {'Clinical':<10} {'Semantic':<10} {'Ratio':<10} {'Rels':<8}")
     print("-" * 75)
-    
-    for episode in sorted(CONVERSATION_DISORDERS.keys()):
-        disorder, meets = CONVERSATION_DISORDERS[episode]
+
+    for episode in sorted(entities_per_ep.keys()):
+        disorder, meets = disorders_map.get(episode, ("Unknown", False))
         ep_data = entities_per_ep.get(episode, {"clinical": 0, "semantic": 0, "total": 0, "relationships": 0})
-        
+
         total = ep_data["clinical"] + ep_data["semantic"]
         ratio = ep_data["clinical"] / total if total > 0 else 0
         ratio_str = f"{ratio:.0%}"
-        
+
         meets_marker = "*" if meets else ""
         print(f"{episode:<32} {disorder:<10} {ep_data['clinical']:<10} {ep_data['semantic']:<10} {ratio_str:<10} {ep_data['relationships']:<8}{meets_marker}")
-    
+
     print("\n  * = meets diagnostic criteria")
-    
+
     # Aggregate by disorder
     print("\n" + "-" * 75)
     print("AGGREGATED BY DISORDER:")
     print("-" * 75)
-    
-    by_disorder = analyze_by_disorder(entities_per_ep)
+
+    by_disorder = analyze_by_disorder(entities_per_ep, episode_disorders)
     
     for disorder, data in by_disorder.items():
         avg_clinical = sum(data["clinical_counts"]) / len(data["clinical_counts"]) if data["clinical_counts"] else 0
@@ -522,34 +557,37 @@ def main():
     """Run the analysis."""
     print("\nConnecting to Neo4j...")
     driver = get_driver()
-    
+
     try:
         with driver.session() as session:
             session.run("RETURN 1")
         print("Connected!\n")
-        
+
+        # Get dynamic episode disorder mapping from Neo4j
+        episode_disorders = get_all_episode_disorders(driver)
+
         # Gather data
         overall = get_overall_stats(driver)
         entities_per_ep = get_entities_per_episode(driver)
         clinical_by_ep = get_clinical_entities_by_episode(driver)
         semantic_by_ep = get_semantic_entities_by_episode(driver)
         rels_by_ep = get_relationships_by_episode(driver)
-        
+
         if overall["total_entities"] == 0:
             print("No data found in the graph!")
             print("Run 'python extract_clinical.py all' first to extract entities.")
             return
-        
-        print_analysis(overall, entities_per_ep, clinical_by_ep, semantic_by_ep, rels_by_ep)
-        
+
+        print_analysis(overall, entities_per_ep, clinical_by_ep, semantic_by_ep, rels_by_ep, episode_disorders)
+
         # Export to JSON
-        by_disorder = analyze_by_disorder(entities_per_ep)
-        json_path = export_to_json(overall, entities_per_ep, clinical_by_ep, semantic_by_ep, rels_by_ep, by_disorder)
+        by_disorder = analyze_by_disorder(entities_per_ep, episode_disorders)
+        json_path = export_to_json(overall, entities_per_ep, clinical_by_ep, semantic_by_ep, rels_by_ep, by_disorder, episode_disorders)
         print(f"\n{'=' * 75}")
         print(f"Results exported to: {json_path}")
         print(f"Also saved as: results/analysis_latest.json")
         print(f"{'=' * 75}")
-        
+
     finally:
         driver.close()
 

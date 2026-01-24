@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat2Graph Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style type="text/css">
+        #graphNetwork {
+            width: 100%;
+            height: 500px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Navigation -->
+        <header>
+            <div class="header-left">
+                <h1>Chat2Graph</h1>
+                <nav class="nav-links">
+                    <a href="index.html" class="nav-link active">Dashboard</a>
+                    <a href="team.html" class="nav-link">Team</a>
+                </nav>
+            </div>
+            <div class="controls">
+                <select id="dataSource" class="select-input">
+                    <option value="latest">Latest Analysis</option>
+                    <option value="api">Live API</option>
+                </select>
+                <button id="refreshBtn" class="btn-primary">Refresh</button>
+            </div>
+        </header>
+
+        <!-- Loading indicator -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <!-- Error message -->
+        <div id="error" class="error hidden"></div>
+
+        <!-- Graph Query Section (moved to top) -->
+        <section class="section">
+            <h2>Graph Query & Visualization</h2>
+            <div class="query-section">
+                <div class="query-controls">
+                    <input type="text" id="graphQuery" class="query-input"
+                           placeholder="Enter your query here...">
+                    <select id="queryMode" class="select-input">
+                        <option value="search">Search Entities</option>
+                        <option value="episode">Show Episode Graph</option>
+                        <option value="relationship">Filter by Relationship</option>
+                        <option value="disorder">Filter by Disorder</option>
+                    </select>
+                    <button id="queryBtn" class="btn-primary">Query</button>
+                    <button id="clearGraphBtn" class="btn-secondary">Clear</button>
+                </div>
+                <div class="query-help">
+                    <strong>Query Modes:</strong>
+                    Search entities by name, show full episode graphs, filter by relationship type (HAS_SYMPTOM, TREATS), or filter by disorder (GAD, ADHD).
+                </div>
+                <div id="graphInfo" class="graph-info"></div>
+                <div id="graphNetwork"></div>
+            </div>
+        </section>
+
+        <!-- Upload Section -->
+        <section class="section upload-section">
+            <h2>Upload Data</h2>
+            <div class="upload-tabs">
+                <button class="upload-tab active" data-tab="transcript">Upload Transcript</button>
+                <button class="upload-tab" data-tab="json">Upload JSON</button>
+            </div>
+
+            <!-- Transcript Upload Form -->
+            <div class="upload-content active" id="transcript-upload">
+                <form id="transcriptForm" class="upload-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="episodeName">Episode Name</label>
+                            <input type="text" id="episodeName" class="form-input"
+                                   placeholder="e.g., gad_patient_001" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="disorderType">Disorder Type</label>
+                            <select id="disorderType" class="form-input" required>
+                                <option value="">Select disorder...</option>
+                                <option value="GAD">GAD (Generalized Anxiety Disorder)</option>
+                                <option value="ADHD">ADHD</option>
+                                <option value="Wernicke's Aphasia">Wernicke's Aphasia</option>
+                                <option value="MDD">MDD (Major Depressive Disorder)</option>
+                                <option value="OCD">OCD</option>
+                                <option value="PTSD">PTSD</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="meetsCriteria">
+                                <span>Meets criteria</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Transcript File (.txt)</label>
+                        <div class="file-drop-zone" id="transcriptDropZone">
+                            <input type="file" id="transcriptFile" accept=".txt" hidden>
+                            <div class="drop-zone-content">
+                                <span class="drop-icon">+</span>
+                                <p>Drag & drop your transcript file here</p>
+                                <p class="drop-hint">or click to browse</p>
+                                <p class="selected-file" id="transcriptFileName"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary btn-upload" id="uploadTranscriptBtn">
+                        Process Transcript
+                    </button>
+                </form>
+            </div>
+
+            <!-- JSON Upload Form -->
+            <div class="upload-content" id="json-upload">
+                <form id="jsonForm" class="upload-form">
+                    <div class="form-group">
+                        <label>Analysis JSON File (.json)</label>
+                        <div class="file-drop-zone" id="jsonDropZone">
+                            <input type="file" id="jsonFile" accept=".json" hidden>
+                            <div class="drop-zone-content">
+                                <span class="drop-icon">+</span>
+                                <p>Drag & drop your JSON file here</p>
+                                <p class="drop-hint">or click to browse</p>
+                                <p class="selected-file" id="jsonFileName"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="json-help">
+                        Upload a JSON file with the same structure as analysis_latest.json.
+                        The data will be merged with existing analysis results.
+                    </p>
+                    <button type="submit" class="btn-primary btn-upload" id="uploadJsonBtn">
+                        Import JSON Data
+                    </button>
+                </form>
+            </div>
+
+            <!-- Processing Status -->
+            <div class="processing-status hidden" id="processingStatus">
+                <h3>Processing Status</h3>
+                <div class="status-steps">
+                    <div class="status-step" data-step="queued">
+                        <span class="step-indicator"></span>
+                        <span class="step-label">Queued</span>
+                    </div>
+                    <div class="status-step" data-step="extracting">
+                        <span class="step-indicator"></span>
+                        <span class="step-label">Extracting</span>
+                    </div>
+                    <div class="status-step" data-step="storing">
+                        <span class="step-indicator"></span>
+                        <span class="step-label">Storing</span>
+                    </div>
+                    <div class="status-step" data-step="analyzing">
+                        <span class="step-indicator"></span>
+                        <span class="step-label">Analyzing</span>
+                    </div>
+                    <div class="status-step" data-step="complete">
+                        <span class="step-indicator"></span>
+                        <span class="step-label">Complete</span>
+                    </div>
+                </div>
+                <p class="status-message" id="statusMessage"></p>
+                <div class="extraction-results hidden" id="extractionResults">
+                    <p><strong>Extraction Results:</strong></p>
+                    <span class="result-badge clinical">Clinical: <span id="clinicalCount">0</span></span>
+                    <span class="result-badge semantic">Semantic: <span id="semanticCount">0</span></span>
+                    <span class="result-badge relationship">Relationships: <span id="relationshipCount">0</span></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Overall Statistics -->
+        <section class="section">
+            <h2>Overall Statistics</h2>
+            <div class="stats-grid" id="overallStats">
+                <!-- Populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section class="section">
+            <h2>Visualizations</h2>
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3>Clinical Ratio by Disorder</h3>
+                    <canvas id="clinicalRatioChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Entity Counts by Disorder</h3>
+                    <canvas id="entityCountsChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Density Metrics</h3>
+                    <canvas id="densityChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Relationships by Episode</h3>
+                    <canvas id="relationshipsChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- By Disorder Section -->
+        <section class="section">
+            <h2>Analysis by Disorder</h2>
+            <div id="disorderCards" class="disorder-cards">
+                <!-- Populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Episodes Section -->
+        <section class="section">
+            <h2>Episodes</h2>
+            <div id="episodeTabs" class="tabs">
+                <!-- Populated by JavaScript -->
+            </div>
+            <div id="episodeContent" class="episode-content">
+                <!-- Populated by JavaScript -->
+            </div>
+        </section>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
